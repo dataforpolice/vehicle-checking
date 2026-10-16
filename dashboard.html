@@ -58,8 +58,45 @@
   .hint { font-size: 11px; color: #5f6368; font-weight: normal; }
   .chartbox { position: relative; height: 230px; }
   #map { height: 360px; border-radius: 8px; }
-  #summary { white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.55; background: #f8f9fa; border: 1px solid #e0e0e0;
-             border-radius: 8px; padding: 10px; max-height: 320px; overflow: auto; margin: 0; }
+  /* ---- formatted summary report ---- */
+  #report { border: 1px solid #c5cae9; border-radius: 12px; overflow: hidden; background: #fff; }
+  .rp-head { background: linear-gradient(90deg, #1a237e, #283593); color: #fff; padding: 14px 18px; border-bottom: 4px solid #c9a227;
+             display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .rp-head .t1 { font-size: 19px; font-weight: bold; } .rp-head .t2 { font-size: 13px; opacity: .9; margin-top: 3px; }
+  .rp-head .meta { font-size: 12px; opacity: .9; text-align: right; line-height: 1.5; }
+  .rp-filters { background: #fff8e1; color: #6d4c00; font-size: 12px; padding: 6px 18px; border-bottom: 1px solid #ffe082; }
+  .rp-body { padding: 14px 18px; }
+  .rp-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  @media (max-width: 760px) { .rp-kpis { grid-template-columns: repeat(3, 1fr); } }
+  .rp-kpi { border-radius: 10px; padding: 10px 6px; text-align: center; background: #f5f6fb; }
+  .rp-kpi .n { font-size: 24px; font-weight: bold; color: #1a237e; line-height: 1.1; } .rp-kpi .l { font-size: 11.5px; color: #5f6368; margin-top: 3px; }
+  .rp-kpi.red { background: #ffebee; } .rp-kpi.red .n { color: #c62828; }
+  .rp-kpi.orange { background: #fff3e0; } .rp-kpi.orange .n { color: #e65100; }
+  .rp-sec { margin-top: 16px; } .rp-sec h3 { margin: 0 0 8px; font-size: 14px; color: #1a237e; border-bottom: 2px solid #e8eaf6; padding-bottom: 4px; }
+  .rp-sec.red h3 { color: #c62828; border-color: #ffcdd2; }
+  .rp-bar { display: flex; height: 22px; border-radius: 11px; overflow: hidden; background: #eceff1; }
+  .rp-bar div { height: 100%; }
+  .rp-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12.5px; }
+  .rp-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .rp-watch { background: #ffebee; border-left: 4px solid #c62828; border-radius: 6px; padding: 7px 10px; margin-bottom: 6px; font-size: 13px; }
+  .rp-watch b { color: #b71c1c; }
+  .rp-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .rp-tbl th { text-align: left; background: #e8eaf6; color: #1a237e; padding: 6px 8px; }
+  .rp-tbl td { padding: 7px 8px; border-top: 1px solid #eceff1; vertical-align: top; }
+  .rp-tbl td.num { text-align: center; font-weight: bold; color: #1a237e; width: 54px; }
+  .rp-v { display: inline-block; margin: 2px 3px 2px 0; padding: 1px 7px; border-radius: 9px; background: #eef0f8; color: #1a237e; font-size: 11.5px; font-weight: bold; }
+  .rp-v.l2 { background: #ffe0b2; color: #8a4b00; } .rp-v.l3 { background: #ffcdd2; color: #b71c1c; }
+  .rp-mini { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 5px; background: #eceff1; min-width: 60px; }
+  .rp-foot { font-size: 11px; color: #90a4ae; padding: 8px 18px 12px; border-top: 1px dashed #e0e0e0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+  .rp-empty { color: #5f6368; padding: 10px 0; }
+  @media print {
+    body { background: #fff; }
+    body > *:not(.wrap), .wrap > *:not(#reportCard), #reportCard h2 { display: none !important; }
+    #reportCard { box-shadow: none; padding: 0; margin: 0; }
+    #report { border: 0; }
+    .rp-head, .rp-kpi, .rp-bar div, .rp-v, .rp-watch, .rp-tbl th, .rp-filters, .rp-mini div { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .rp-tbl tr { break-inside: avoid; }
+  }
   .actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   .tbl th { background: #e8eaf6; text-align: left; padding: 7px; position: sticky; top: 0; z-index: 1; }
@@ -183,15 +220,16 @@
     <div class="kpi green"><div class="v" id="k_today">–</div><div class="l" data-i="kToday"></div></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="reportCard">
     <h2><span data-i="sumTitle"></span>
       <span class="actions">
         <button type="button" class="btn" onclick="copySummary()" data-i="copy"></button>
         <button type="button" class="btn green" onclick="shareWA()" data-i="wa"></button>
+        <button type="button" class="btn" onclick="window.print()" data-i="print"></button>
         <button type="button" class="btn light" onclick="downloadCSV()" data-i="csv"></button>
       </span>
     </h2>
-    <pre id="summary"></pre>
+    <div id="report"></div>
   </div>
 
   <div class="card">
@@ -259,7 +297,10 @@ const I18N = {
     repeatOnly: 'सिर्फ़ दोबारा जाँचे वाहन', kTotal: 'कुल जाँच', kVeh: 'अलग-अलग वाहन', kCp: 'नाका सक्रिय', kWatch: '🚨 वॉचलिस्ट मैच',
     kFlag: '⚠ फ़्लैग वाली जाँच', kRep: '🔁 दोबारा जाँचे वाहन', kAct: '📝 कार्रवाई (चालान आदि)', kToday: 'आज की कुल जाँच',
     todayAlert: '🚨 आज {n} वॉचलिस्ट मैच हुए हैं — देखने के लिए यहाँ दबाएँ',
-    sumTitle: '📋 संक्षिप्त रिपोर्ट', copy: '📋 कॉपी', wa: '🟢 WhatsApp', csv: '⬇ CSV', copied: '✔ कॉपी हो गया', csvDone: '⬇ CSV डाउनलोड हो रही है',
+    sumTitle: '📋 संक्षिप्त रिपोर्ट', print: '🖨 प्रिंट / PDF', rgGen: 'रिपोर्ट बनी', rgPriv: 'गोपनीय — केवल विभागीय उपयोग हेतु',
+    kChecks: 'कुल जाँच', kVehs: 'अलग वाहन', kPts: 'नाका', kW: 'वॉचलिस्ट', kF: 'फ़्लैग', kA: 'कार्रवाई',
+    secRes: '✅ परिणाम', secWatch: '🚨 वॉचलिस्ट मैच', secPts: '📍 नाका-वार जाँचे गए वाहन', secRep: '🔁 एक से ज़्यादा बार जाँचे गए',
+    copy: '📋 कॉपी', wa: '🟢 WhatsApp', csv: '⬇ CSV', copied: '✔ कॉपी हो गया', csvDone: '⬇ CSV डाउनलोड हो रही है',
     pointTitle: '📍 नाका-वार जाँचे गए वाहन', pointHint: 'नाका दबाएँ = सिर्फ़ वह नाका · वाहन दबाएँ = उसकी खोज',
     point: 'नाका', checks: 'जाँच', vehicles: 'वाहन', flags: '🚩', last: 'आख़िरी एंट्री', cDay: '📅 दिन-वार', clickDay: 'बार दबाएँ = वह दिन',
     cHour: '⏰ घंटे-वार', clickHour: 'बार दबाएँ = वह घंटा', cPoint: '📍 नाका-वार (टॉप 15)', clickPoint: 'बार दबाएँ = वह नाका',
@@ -291,7 +332,10 @@ const I18N = {
     repeatOnly: 'Repeat vehicles only', kTotal: 'Total checks', kVeh: 'Unique vehicles', kCp: 'Active points', kWatch: '🚨 Watchlist hits',
     kFlag: '⚠ Flagged checks', kRep: '🔁 Repeat vehicles', kAct: '📝 Action taken (challan etc.)', kToday: 'Checks today',
     todayAlert: '🚨 {n} watchlist match(es) today — tap to view',
-    sumTitle: '📋 Summary report', copy: '📋 Copy', wa: '🟢 WhatsApp', csv: '⬇ CSV', copied: '✔ Copied', csvDone: '⬇ Downloading CSV',
+    sumTitle: '📋 Summary report', print: '🖨 Print / PDF', rgGen: 'Generated', rgPriv: 'Confidential — for official use only',
+    kChecks: 'Checks', kVehs: 'Vehicles', kPts: 'Points', kW: 'Watchlist', kF: 'Flagged', kA: 'Action',
+    secRes: '✅ Results', secWatch: '🚨 Watchlist matches', secPts: '📍 Vehicles checked by point', secRep: '🔁 Checked more than once',
+    copy: '📋 Copy', wa: '🟢 WhatsApp', csv: '⬇ CSV', copied: '✔ Copied', csvDone: '⬇ Downloading CSV',
     pointTitle: '📍 Vehicles checked by point', pointHint: 'Tap a point = filter it · tap a vehicle = search it',
     point: 'Point', checks: 'Checks', vehicles: 'Vehicles', flags: '🚩', last: 'Last entry', cDay: '📅 Per day', clickDay: 'Tap a bar = that day',
     cHour: '⏰ Per hour', clickHour: 'Tap a bar = that hour', cPoint: '📍 Per point (top 15)', clickPoint: 'Tap a bar = that point',
@@ -318,7 +362,7 @@ let LANG = store.get('vj_dash_lang', 'hi');
 const t = (k, vars) => { let s = (I18N[LANG] && I18N[LANG][k]) || I18N.hi[k] || k; if (vars) Object.keys(vars).forEach(v => s = s.split('{' + v + '}').join(vars[v])); return s; };
 const API = (window.VJ && window.VJ.API_URL) || '';
 let PIN = store.get('vj_sup_pin', '');
-let DATA = null, ROWS = [], WATCH = [], period = 'today', timer = null, charts = {}, map = null, layer = null, shown = 50, actionOnly = false;
+let SUMMARY = '', DATA = null, ROWS = [], WATCH = [], period = 'today', timer = null, charts = {}, map = null, layer = null, shown = 50, actionOnly = false;
 const F = { status: 'all', points: [] };
 const photoCache = {};
 
@@ -493,7 +537,8 @@ function render() {
   $('k_watch').textContent = list.filter(r => r.level === 3).length; $('k_flag').textContent = list.filter(r => r.level).length;
   $('k_rep').textContent = Object.keys(veh).filter(v => veh[v] > 1).length; $('k_act').textContent = list.filter(r => r.result !== 'OK').length;
   $('k_today').textContent = DATA.todayTotal;
-  $('summary').textContent = summaryText(list, pts, veh);
+  SUMMARY = summaryText(list, pts, veh);
+  renderReport(list, pts, veh);
   drawPointTable(pts); drawCharts(list, pts); drawMap(list); drawEntries(list); drawRepeats(veh); drawStorage();
 }
 function groupPoints(list) {
@@ -503,22 +548,83 @@ function groupPoints(list) {
   return Object.keys(g).map(k => g[k]).sort((a, b) => b.rows.length - a.rows.length);
 }
 function periodText() { const f = $('from').value.split('-').reverse().join('-'), to = $('to').value.split('-').reverse().join('-'); return f === to ? f : f + ' – ' + to; }
+const RES_COL = { 'OK': '#2e7d32', 'Challan': '#ef6c00', 'Warning': '#f9a825', 'Seized': '#c62828', 'Further check': '#5c6bc0' };
+function orgLine() { return LANG === 'hi' ? (VJ.ORG_HI || '') : (VJ.ORG_EN || ''); }
 function summaryText(list, pts, veh) {
-  const L = [t('rTitle'), t('rPeriod') + ': ' + periodText()];
-  const af = activeFilters(); if (af.length) L.push(t('rFilters') + ': ' + af.join(' · '));
-  L.push(t('rLine', { t: list.length, v: Object.keys(veh).length, p: pts.length, w: list.filter(r => r.level === 3).length, f: list.filter(r => r.level === 2).length }));
-  if (!list.length) { L.push('', t('none')); return L.join('\n'); }
+  const LINE = '━━━━━━━━━━━━━━';
+  const L = ['*' + t('rTitle') + '*' + (orgLine() ? '\n_' + orgLine() + '_' : ''), '📅 ' + periodText()];
+  const af = activeFilters(); if (af.length) L.push('🔎 ' + af.join(' · '));
+  L.push(LINE);
+  const w = list.filter(r => r.level === 3).length, f = list.filter(r => r.level).length, a = list.filter(r => r.result !== 'OK').length;
+  L.push('*' + list.length + '* ' + t('kChecks') + ' · *' + Object.keys(veh).length + '* ' + t('kVehs') + ' · *' + pts.length + '* ' + t('kPts'));
+  L.push('🚨 *' + w + '* ' + t('kW') + ' · ⚠ *' + f + '* ' + t('kF') + ' · 📝 *' + a + '* ' + t('kA'));
+  if (!list.length) { L.push(LINE, t('none')); return L.join('\n'); }
   const rc = {}; list.forEach(r => rc[r.result] = (rc[r.result] || 0) + 1);
-  L.push(t('rRes') + ' ' + Object.keys(rc).map(k => resLabel(k) + ' ' + rc[k]).join(' · '));
-  const w = list.filter(r => r.level === 3);
-  if (w.length) { L.push('', t('rWatch')); w.slice(0, 10).forEach(r => L.push('• ' + r.vehicle + ' · ' + r.time + ' · ' + r.point + ' · ' + r.name)); }
-  L.push('', t('rPoints'));
-  pts.forEach(g => { const lv = {}; g.rows.slice().sort((a, b) => a.ms - b.ms).forEach(r => lv[r.vehicle] = Math.max(lv[r.vehicle] || 0, r.level));
+  L.push('', '*' + t('secRes') + '*', Object.keys(rc).sort((x, y) => rc[y] - rc[x]).map(k => resLabel(k) + ' ' + rc[k]).join('  |  '));
+  const wl = list.filter(r => r.level === 3);
+  if (wl.length) { L.push('', '*' + t('secWatch') + '*'); wl.slice(0, 10).forEach(r => L.push('▪ *' + r.vehicle + '* — ' + r.time + ', ' + r.point + (r.name ? ', ' + r.name : ''))); }
+  L.push('', '*' + t('secPts') + '*');
+  pts.forEach(g => { const lv = {}; g.rows.slice().sort((x, y) => x.ms - y.ms).forEach(r => lv[r.vehicle] = Math.max(lv[r.vehicle] || 0, r.level));
     const vs = Object.keys(lv).map(v => (lv[v] === 3 ? '🚨' : lv[v] ? '⚠' : '') + v);
-    L.push('• ' + g.name + ' (' + g.rows.length + '): ' + vs.slice(0, 25).join(', ') + (vs.length > 25 ? ' … +' + (vs.length - 25) + ' ' + t('rMore') : '')); });
-  const rep = Object.keys(veh).filter(v => veh[v] > 1).sort((a, b) => veh[b] - veh[a]);
-  if (rep.length) L.push('', t('rRep') + ' ' + rep.slice(0, 15).map(v => v + ' (' + veh[v] + ')').join(', ') + (rep.length > 15 ? ' …' : ''));
+    L.push('▪ *' + g.name + '* (' + g.rows.length + ')', '   ' + vs.slice(0, 25).join(', ') + (vs.length > 25 ? ' … +' + (vs.length - 25) + ' ' + t('rMore') : '')); });
+  const rep = Object.keys(veh).filter(v => veh[v] > 1).sort((x, y) => veh[y] - veh[x]);
+  if (rep.length) L.push('', '*' + t('secRep') + '*', rep.slice(0, 15).map(v => v + ' (' + veh[v] + ')').join(', ') + (rep.length > 15 ? ' …' : ''));
+  L.push(LINE, '_' + t('rgPriv') + '_');
   return L.join('\n');
+}
+
+// Good-looking report card (same content as the WhatsApp text)
+function renderReport(list, pts, veh) {
+  const R = $('report'); R.innerHTML = '';
+  const head = el('div', 'rp-head');
+  const left = el('div'); left.appendChild(el('div', 't1', t('rTitle'))); if (orgLine()) left.appendChild(el('div', 't2', orgLine()));
+  left.appendChild(el('div', 't2', '📅 ' + periodText())); head.appendChild(left);
+  const meta = el('div', 'meta'); meta.appendChild(el('div', '', t('rgGen') + ': ' + fmtTime(Date.now()))); meta.appendChild(el('div', '', t('rgPriv'))); head.appendChild(meta);
+  R.appendChild(head);
+  const af = activeFilters(); if (af.length) R.appendChild(el('div', 'rp-filters', '🔎 ' + af.join(' · ')));
+  const body = el('div', 'rp-body'); R.appendChild(body);
+  const k = el('div', 'rp-kpis');
+  const kpi = (n, l, cls) => { const d = el('div', 'rp-kpi' + (cls ? ' ' + cls : '')); d.appendChild(el('div', 'n', n)); d.appendChild(el('div', 'l', l)); k.appendChild(d); };
+  kpi(list.length, t('kChecks')); kpi(Object.keys(veh).length, t('kVehs')); kpi(pts.length, t('kPts'));
+  kpi(list.filter(r => r.level === 3).length, '🚨 ' + t('kW'), 'red'); kpi(list.filter(r => r.level).length, '⚠ ' + t('kF'), 'orange');
+  kpi(list.filter(r => r.result !== 'OK').length, '📝 ' + t('kA'), 'orange');
+  body.appendChild(k);
+  if (!list.length) { body.appendChild(el('div', 'rp-empty', t('none'))); }
+  else {
+    // results bar
+    const rc = {}; list.forEach(r => rc[r.result] = (rc[r.result] || 0) + 1);
+    const keys = Object.keys(rc).sort((x, y) => rc[y] - rc[x]);
+    const sec = el('div', 'rp-sec'); sec.appendChild(el('h3', '', t('secRes')));
+    const bar = el('div', 'rp-bar'); keys.forEach(x => { const d = el('div'); d.style.width = (rc[x] * 100 / list.length) + '%'; d.style.background = RES_COL[x] || '#90a4ae'; d.title = resLabel(x) + ' ' + rc[x]; bar.appendChild(d); });
+    sec.appendChild(bar);
+    const lg = el('div', 'rp-legend'); keys.forEach(x => { const s2 = el('span'); const i = el('i'); i.style.background = RES_COL[x] || '#90a4ae'; s2.appendChild(i);
+      s2.appendChild(document.createTextNode(resLabel(x) + ' ')); s2.appendChild(el('b', '', rc[x] + ' (' + Math.round(rc[x] * 100 / list.length) + '%)')); lg.appendChild(s2); });
+    sec.appendChild(lg); body.appendChild(sec);
+    // watchlist
+    const wl = list.filter(r => r.level === 3);
+    if (wl.length) { const ws = el('div', 'rp-sec red'); ws.appendChild(el('h3', '', t('secWatch') + ' (' + wl.length + ')'));
+      wl.slice(0, 15).forEach(r => { const d = el('div', 'rp-watch'); d.appendChild(el('b', '', r.vehicle)); d.appendChild(document.createTextNode('  ·  ' + r.time + '  ·  ' + r.point + (r.name ? '  ·  ' + r.name : '') + (r.officer ? '  ·  👮 ' + r.officer : ''))); ws.appendChild(d); });
+      body.appendChild(ws); }
+    // point-wise table
+    const ps = el('div', 'rp-sec'); ps.appendChild(el('h3', '', t('secPts')));
+    const tb = el('table', 'rp-tbl'); const hr = tb.insertRow(); [t('point'), t('checks'), t('vehicles')].forEach(x => hr.appendChild(el('th', '', x)));
+    pts.forEach(g => {
+      const tr = tb.insertRow(); const c1 = tr.insertCell(); c1.appendChild(el('b', '', g.name));
+      const prc = {}; g.rows.forEach(r => prc[r.result] = (prc[r.result] || 0) + 1);
+      const mini = el('div', 'rp-mini'); Object.keys(prc).forEach(x => { const d = el('div'); d.style.width = (prc[x] * 100 / g.rows.length) + '%'; d.style.background = RES_COL[x] || '#90a4ae'; mini.appendChild(d); });
+      c1.appendChild(mini);
+      const c2 = tr.insertCell(); c2.className = 'num'; c2.textContent = g.rows.length;
+      const c3 = tr.insertCell(); const lv = {}; g.rows.slice().sort((x, y) => x.ms - y.ms).forEach(r => lv[r.vehicle] = Math.max(lv[r.vehicle] || 0, r.level));
+      Object.keys(lv).sort((x, y) => lv[y] - lv[x]).forEach(v => c3.appendChild(el('span', 'rp-v' + (lv[v] ? ' l' + lv[v] : ''), (lv[v] === 3 ? '🚨 ' : lv[v] ? '⚠ ' : '') + v)));
+    });
+    ps.appendChild(tb); body.appendChild(ps);
+    // repeats
+    const rep = Object.keys(veh).filter(v => veh[v] > 1).sort((x, y) => veh[y] - veh[x]);
+    if (rep.length) { const rs = el('div', 'rp-sec'); rs.appendChild(el('h3', '', t('secRep')));
+      const box = el('div'); rep.slice(0, 30).forEach(v => box.appendChild(el('span', 'rp-v l2', v + ' × ' + veh[v]))); rs.appendChild(box); body.appendChild(rs); }
+  }
+  const foot = el('div', 'rp-foot'); foot.appendChild(el('span', '', (LANG === 'hi' ? VJ.TITLE_HI : VJ.TITLE_EN) + ' · ' + t('rgPriv'))); foot.appendChild(el('span', '', t('rgGen') + ': ' + fmtTime(Date.now())));
+  R.appendChild(foot);
 }
 function drawPointTable(pts) {
   const tb = $('t_point'); tb.innerHTML = ''; const h = tb.insertRow();
@@ -631,9 +737,9 @@ function drawWatch() {
 }
 
 // ---------- copy / share / csv ----------
-function copySummary() { const txt = $('summary').textContent; const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+function copySummary() { const txt = SUMMARY; const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
   try { document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {}); toast(t('copied')); }
-function shareWA() { let txt = $('summary').textContent; if (txt.length > 3500) txt = txt.slice(0, 3500) + '\n…'; window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank'); }
+function shareWA() { let txt = SUMMARY; if (txt.length > 3500) txt = txt.slice(0, 3500) + '\n…'; window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank'); }
 function downloadCSV() {
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const lines = [t('csvHead')];
   sortList(filtered()).forEach(r => lines.push([r.time, r.vehicle, r.type, r.name, r.phone, r.point, r.officer, r.result, r.remarks,
