@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a237e">
+<meta name="robots" content="noindex, nofollow">
+<title>वाहन जाँच</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="config.js"></script>
+<style>
+  :root { --navy: #1a237e; --gold: #c9a227; --bg: #eceff1; --card: #fff; --ink: #202124; --muted: #5f6368;
+          --green: #188038; --orange: #e65100; --red: #c62828; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: Arial, "Noto Sans Devanagari", sans-serif; background: var(--bg); color: var(--ink);
+         font-size: 16px; }
+  header { background: var(--navy); color: #fff; padding: 10px 14px; border-bottom: 4px solid var(--gold);
+           position: sticky; top: 0; z-index: 20; }
+  .hrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header .org { font-size: 12px; opacity: .85; }
+  .hbtns { display: flex; gap: 6px; align-items: center; }
+  .pill { font-size: 12px; padding: 4px 8px; border-radius: 12px; background: rgba(255,255,255,.15); white-space: nowrap;
+          border: 0; color: #fff; font-family: inherit; }
+  .pill.off { background: var(--red); } .pill.q { background: var(--gold); color: var(--navy); font-weight: bold; }
+  .iconbtn { background: transparent; border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: 6px;
+             padding: 4px 8px; font-size: 14px; font-family: inherit; }
+  .who { font-size: 12px; margin-top: 4px; opacity: .9; display: flex; gap: 10px; flex-wrap: wrap; }
+  main { max-width: 520px; margin: 0 auto; padding: 12px 12px 90px; }
+  .card { background: var(--card); border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.12); margin-bottom: 12px; }
+  label.f { display: block; font-weight: bold; font-size: 15px; margin: 2px 0 6px; }
+  .req { color: var(--red); } .opt { color: var(--muted); font-weight: normal; font-size: 13px; }
+  input[type=text], input[type=tel], input[type=password], textarea {
+    width: 100%; padding: 12px; border: 1px solid #bdbdbd; border-radius: 8px; font-size: 17px; font-family: inherit; background: #fff; }
+  #veh { font-size: 24px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-align: center; padding: 14px; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .warn { color: var(--orange); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid #9fa8da; background: #fff; color: var(--navy); padding: 9px 12px; border-radius: 20px; font-size: 15px;
+          font-family: inherit; cursor: pointer; }
+  .chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .chip.r-ok.on { background: var(--green); border-color: var(--green); }
+  .chip.r-ch.on, .chip.r-wa.on { background: var(--orange); border-color: var(--orange); }
+  .chip.r-sz.on { background: var(--red); border-color: var(--red); }
+  .btn { display: block; width: 100%; padding: 14px; border: 0; border-radius: 10px; font-size: 17px; font-family: inherit;
+         background: var(--navy); color: #fff; cursor: pointer; text-align: center; }
+  .btn.light { background: #e8eaf6; color: var(--navy); }
+  .btn.big { background: var(--green); font-size: 19px; padding: 16px; font-weight: bold; }
+  .btn:disabled { background: #9aa0a6; }
+  #photoIn { display: none; }
+  #preview { width: 100%; border-radius: 10px; margin-top: 8px; display: none; max-height: 340px; object-fit: cover; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 380px) { .row2 { grid-template-columns: 1fr; } }
+
+  /* history */
+  #hist { display: none; margin-top: 10px; border-radius: 10px; overflow: hidden; border: 2px solid #c5cae9; }
+  #hist .hh { padding: 10px 12px; font-weight: bold; font-size: 15px; background: #e8eaf6; color: var(--navy); }
+  #hist.new { border-color: #a5d6a7; } #hist.new .hh { background: #e6f4ea; color: var(--green); }
+  #hist.seen { border-color: #ffcc80; } #hist.seen .hh { background: #fff3e0; color: #8a4b00; }
+  #hist.red { border-color: var(--red); } #hist.red .hh { background: var(--red); color: #fff; }
+  .hb { padding: 8px 12px; font-size: 14px; line-height: 1.5; }
+  .hlast { background: #fafafa; border-radius: 8px; padding: 8px; margin: 4px 0 8px; }
+  .hitem { display: flex; justify-content: space-between; gap: 8px; align-items: center; border-top: 1px solid #eee; padding: 7px 0; }
+  .hitem small { color: var(--muted); }
+  .see { background: var(--navy); color: #fff; border: 0; border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: inherit; white-space: nowrap; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; font-weight: bold; background: #eceff1; }
+  .tag.ok { background: #c8e6c9; color: #1b5e20; } .tag.bad { background: #ffe0b2; color: #8a4b00; } .tag.sz { background: #ffcdd2; color: #b71c1c; }
+  .watch { background: #ffebee; color: #b71c1c; font-weight: bold; padding: 8px 12px; }
+
+  #msg { margin-top: 10px; text-align: center; font-weight: bold; white-space: pre-line; }
+  .ok { color: var(--green); } .err { color: var(--red); }
+  #result { display: none; }
+  #result.show { display: block; }
+  details summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .mine { font-size: 14px; }
+  .mine div { border-top: 1px solid #eee; padding: 6px 0; display: flex; justify-content: space-between; gap: 6px; }
+
+  /* overlays */
+  .overlay { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.6); overflow-y: auto; }
+  .overlay.show { display: block; }
+  .sheet { background: #fff; max-width: 480px; margin: 40px auto; border-radius: 14px; padding: 18px; }
+  .sheet h2 { margin: 0 0 12px; color: var(--navy); }
+  .sheet .gap { height: 12px; }
+  #viewer { background: rgba(0,0,0,.92); }
+  #viewer .vin { max-width: 640px; margin: 0 auto; padding: 14px; color: #fff; }
+  #viewer img { width: 100%; border-radius: 10px; margin-top: 10px; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #323232; color: #fff; padding: 10px 16px;
+           border-radius: 8px; z-index: 60; display: none; max-width: 90%; text-align: center; }
+  #alertTop { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 70; background: var(--red); color: #fff;
+              font-weight: bold; text-align: center; padding: 14px; font-size: 17px; }
+</style>
+</head>
+<body>
+<div id="alertTop" onclick="this.style.display='none'"></div>
+<div id="toast"></div>
+
+<header>
+  <div class="hrow">
+    <div><h1 id="title">वाहन जाँच</h1><div class="org" id="org"></div></div>
+    <div class="hbtns">
+      <button class="pill" id="net" type="button" onclick="syncQueue(true)"></button>
+      <button class="pill q" id="qbadge" type="button" onclick="syncQueue(true)" style="display:none"></button>
+      <button class="iconbtn" type="button" onclick="toggleLang()" id="langBtn">EN</button>
+      <button class="iconbtn" type="button" onclick="openSetup()">⚙</button>
+    </div>
+  </div>
+  <div class="who"><span id="whoOfficer"></span><span id="whoPoint"></span><span id="gps"></span></div>
+</header>
+
+<main>
+  <!-- 1. Vehicle number + live history -->
+  <div class="card">
+    <label class="f" for="veh"><span data-i="vehNo"></span> <span class="req">*</span></label>
+    <input type="text" id="veh" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="14" placeholder="HR05AB1234">
+    <div class="hint" id="vehHint" data-i="vehHint"></div>
+    <div id="hist"><div class="hh" id="histHead"></div><div id="histBody"></div></div>
+  </div>
+
+  <!-- 2. Vehicle type -->
+  <div class="card">
+    <label class="f" data-i="vehType"></label>
+    <div class="chips" id="types"></div>
+  </div>
+
+  <!-- 3. One photo -->
+  <div class="card">
+    <label class="f"><span data-i="photo"></span> <span class="req">*</span></label>
+    <label for="photoIn" class="btn" id="photoBtn"></label>
+    <input type="file" id="photoIn" accept="image/*" capture="environment">
+    <img id="preview" alt="">
+    <div class="hint" data-i="photoHint"></div>
+  </div>
+
+  <!-- 4. Person -->
+  <div class="card">
+    <label class="f" for="driver"><span data-i="driver"></span> <span class="req">*</span></label>
+    <input type="text" id="driver" autocomplete="off">
+    <div class="gap" style="height:12px"></div>
+    <label class="f" for="phone"><span data-i="mobile"></span> <span class="opt" data-i="optional"></span></label>
+    <input type="tel" id="phone" inputmode="numeric" maxlength="14" autocomplete="off">
+  </div>
+
+  <!-- 5. Result -->
+  <div class="card">
+    <label class="f" data-i="result"></label>
+    <div class="chips" id="results"></div>
+    <details style="margin-top:12px"><summary data-i="addRemark"></summary>
+      <textarea id="remarks" rows="2" style="margin-top:8px"></textarea>
+    </details>
+  </div>
+
+  <button type="button" class="btn big" id="submitBtn" onclick="submitCheck()"></button>
+  <div id="msg"></div>
+
+  <div class="card" id="result" style="margin-top:12px"></div>
+
+  <div class="card">
+    <details><summary><span data-i="mine"></span> (<span id="mineCount">0</span>)</summary>
+      <div class="mine" id="mineList"></div>
+    </details>
+  </div>
+</main>
+
+<!-- Setup / settings -->
+<div class="overlay" id="setup">
+  <div class="sheet">
+    <h2 data-i="setupTitle"></h2>
+    <label class="f" for="sPin" data-i="pin"></label>
+    <input type="password" id="sPin" inputmode="numeric" autocomplete="off">
+    <div class="gap"></div>
+    <label class="f" for="sOfficer" data-i="officer"></label>
+    <input type="text" id="sOfficer" autocomplete="off">
+    <div class="gap"></div>
+    <label class="f" for="sPoint" data-i="point"></label>
+    <input type="text" id="sPoint" autocomplete="off">
+    <div class="gap"></div>
+    <div class="chips"><button type="button" class="chip" onclick="setLang('hi')">हिंदी</button><button type="button" class="chip" onclick="setLang('en')">English</button></div>
+    <div class="gap"></div>
+    <button type="button" class="btn" onclick="saveSetup()" data-i="save"></button>
+    <div id="setupMsg" class="hint err" style="text-align:center;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- Photo viewer -->
+<div class="overlay" id="viewer" onclick="if(event.target===this)closeViewer()">
+  <div class="vin">
+    <button type="button" class="btn light" onclick="closeViewer()" data-i="close"></button>
+    <div id="vInfo" style="margin-top:10px;line-height:1.6"></div>
+    <div id="vImg"></div>
+  </div>
+</div>
+
+<script>
+// ============================ Language ============================
+const T = {
+  hi: {
+    vehNo: '🚗 वाहन नंबर', vehHint: 'बिना स्पेस लिखें, जैसे HR05AB1234 — पिछला रिकॉर्ड अपने-आप दिखेगा',
+    vehType: '🚙 वाहन का प्रकार', photo: '📷 चालक की फ़ोटो (वाहन सहित)', photoBtn: '📷 फ़ोटो लें', retake: '🔄 दोबारा फ़ोटो लें',
+    photoHint: 'एक ही साफ़ फ़ोटो — चालक का चेहरा और हो सके तो नंबर प्लेट दिखे', driver: '👤 चालक / व्यक्ति का नाम',
+    mobile: '📱 मोबाइल नंबर', optional: '(वैकल्पिक)', result: '✅ जाँच का परिणाम', addRemark: '+ टिप्पणी जोड़ें',
+    submit: '✅ जमा करें', sending: '⏳ जमा हो रहा है...', mine: '📋 इस फ़ोन से आज की जाँच',
+    setupTitle: '⚙ सेटअप', pin: '🔒 स्टाफ़ PIN', officer: '👮 आपका नाम / बेल्ट नंबर', point: '📍 नाका / पॉइंट का नाम',
+    save: 'सेव करें और शुरू करें', close: '✕ बंद करें',
+    types: ['दो-पहिया', 'कार / जीप', 'ट्रक / पिकअप', 'ऑटो / ई-रिक्शा', 'बस', 'अन्य'],
+    results: ['✔ ठीक', '📝 चालान', '⚠ चेतावनी', '🚫 ज़ब्त / हिरासत', '🔍 आगे जाँच'],
+    online: '🟢 ऑनलाइन', offline: '🔴 ऑफ़लाइन', queued: '⏳ {n} भेजना बाकी',
+    gpsWait: '📍 लोकेशन ढूँढ रहे हैं…', gpsOk: '📍 ±{m} मी.', gpsBad: '📍 लोकेशन नहीं — GPS चालू करें',
+    looking: '🔍 पिछला रिकॉर्ड देखा जा रहा है…', firstTime: '✔ यह वाहन पहली बार जाँचा जा रहा है',
+    seenBefore: '🔁 यह वाहन पहले {n} बार जाँचा गया', last: 'आख़िरी जाँच', in24: '⚠ पिछले 24 घंटे में {n} बार',
+    drivers: 'पिछले चालक', phoneSeen: '📱 यह मोबाइल पहले {n} जाँच में — दूसरे वाहन: {v}', nameSeen: '👤 इसी नाम से पहले {n} जाँच (दूसरे वाहन)',
+    watch: '🚨 वॉचलिस्ट मैच!', offlineHist: '📴 ऑफ़लाइन — पिछला रिकॉर्ड अभी नहीं दिख सकता, जाँच फिर भी जमा होगी',
+    histErr: '⚠ रिकॉर्ड नहीं मिल सका: ', view: '👁 फ़ोटो', noPhoto: 'फ़ोटो उपलब्ध नहीं (पुरानी होने से हटा दी गई)',
+    needVeh: '⚠ वाहन नंबर भरें', needPhoto: '⚠ फ़ोटो लें', needName: '⚠ चालक का नाम भरें', badPhone: '⚠ मोबाइल नंबर सही नहीं (10 अंक) — ठीक करें या खाली छोड़ें',
+    noGps: '⚠ लोकेशन अभी नहीं मिली। बिना लोकेशन जमा करने के लिए दोबारा "जमा करें" दबाएँ।',
+    saved: '✅ जमा हो गया — {v}', savedOff: '📴 फ़ोन में सेव — नेटवर्क आते ही अपने-आप भेजा जाएगा ({v})',
+    dup: '✅ पहले ही जमा था — {v}', failed: '❌ जमा नहीं हुआ: ', needSetup: 'पहले सेटअप पूरा करें', badPin: '❌ PIN गलत है',
+    serverSetup: '⚠ सर्वर में PIN सेट नहीं — एडमिन को बताएँ', fillAll: 'PIN, नाम और नाका तीनों भरें',
+    noApi: '⚠ config.js में API_URL नहीं डाला गया', synced: '✅ {n} जाँच भेज दी गईं', ago_m: '{n} मिनट पहले', ago_h: '{n} घंटे पहले',
+    ago_d: '{n} दिन पहले', justNow: 'अभी', flags: '🚩 मिलान', storageFull: '⚠ फ़ोन की जगह भर गई — पहले नेटवर्क पर भेजें',
+    loadingPhoto: '⏳ फ़ोटो लोड हो रही है…'
+  },
+  en: {
+    vehNo: '🚗 Vehicle number', vehHint: 'No spaces, e.g. HR05AB1234 — past record appears automatically',
+    vehType: '🚙 Vehicle type', photo: '📷 Photo of driver (with vehicle)', photoBtn: '📷 Take photo', retake: '🔄 Retake photo',
+    photoHint: 'One clear photo — driver\'s face and, if possible, the number plate', driver: '👤 Driver / person name',
+    mobile: '📱 Mobile number', optional: '(optional)', result: '✅ Result of check', addRemark: '+ Add remark',
+    submit: '✅ Submit', sending: '⏳ Submitting...', mine: '📋 Today\'s checks from this phone',
+    setupTitle: '⚙ Setup', pin: '🔒 Staff PIN', officer: '👮 Your name / belt no.', point: '📍 Naka / point name',
+    save: 'Save and start', close: '✕ Close',
+    types: ['Two-wheeler', 'Car / Jeep', 'Truck / Pickup', 'Auto / E-rickshaw', 'Bus', 'Other'],
+    results: ['✔ OK', '📝 Challan', '⚠ Warning', '🚫 Seized / Detained', '🔍 Further check'],
+    online: '🟢 Online', offline: '🔴 Offline', queued: '⏳ {n} pending',
+    gpsWait: '📍 Finding location…', gpsOk: '📍 ±{m} m', gpsBad: '📍 No location — turn on GPS',
+    looking: '🔍 Looking up past record…', firstTime: '✔ First time this vehicle is checked',
+    seenBefore: '🔁 Checked {n} time(s) before', last: 'Last check', in24: '⚠ {n} time(s) in last 24 hours',
+    drivers: 'Previous drivers', phoneSeen: '📱 This mobile in {n} earlier check(s) — other vehicles: {v}', nameSeen: '👤 Same name in {n} earlier check(s) (other vehicles)',
+    watch: '🚨 WATCHLIST MATCH!', offlineHist: '📴 Offline — past record not available now; the check will still be saved',
+    histErr: '⚠ Could not load record: ', view: '👁 Photo', noPhoto: 'Photo not available (deleted as old)',
+    needVeh: '⚠ Enter vehicle number', needPhoto: '⚠ Take the photo', needName: '⚠ Enter driver name', badPhone: '⚠ Mobile number invalid (10 digits) — fix or leave blank',
+    noGps: '⚠ No location yet. Tap "Submit" again to save without location.',
+    saved: '✅ Saved — {v}', savedOff: '📴 Saved on phone — will be sent automatically when network returns ({v})',
+    dup: '✅ Already saved — {v}', failed: '❌ Not saved: ', needSetup: 'Complete setup first', badPin: '❌ Wrong PIN',
+    serverSetup: '⚠ PINs not set on server — tell the admin', fillAll: 'Fill PIN, name and naka',
+    noApi: '⚠ API_URL not set in config.js', synced: '✅ {n} check(s) sent', ago_m: '{n} min ago', ago_h: '{n} h ago',
+    ago_d: '{n} days ago', justNow: 'just now', flags: '🚩 Matches', storageFull: '⚠ Phone storage full — send pending checks first',
+    loadingPhoto: '⏳ Loading photo…'
+  }
+};
+const RESULT_KEYS = ['OK', 'Challan', 'Warning', 'Seized', 'Further check'];
+const RESULT_CLS = ['r-ok', 'r-ch', 'r-wa', 'r-sz', 'r-wa'];
+const TYPE_KEYS = ['2W', 'Car/Jeep', 'Truck/Pickup', 'Auto/E-rick', 'Bus', 'Other'];
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+};
+let LANG = store.get('vj_lang', 'hi');
+const t = (k, v) => { let s = (T[LANG] && T[LANG][k]) || T.hi[k] || k; if (v) Object.keys(v).forEach(x => s = s.split('{' + x + '}').join(v[x])); return s; };
+
+// ============================ State ============================
+let CFG = store.get('vj_cfg', null);           // { pin, officer, point }
+let photoB64 = '', photoHash = '', vType = '', vResult = 'OK';
+let gps = null, gpsErr = false, noGpsOk = false;
+let lookSeq = 0, lookTimer = null;
+const API = (window.VJ && window.VJ.API_URL) || '';
+
+// ============================ API ============================
+async function api(action, data) {
+  if (!API || API.indexOf('PASTE_') === 0) throw new Error(t('noApi'));
+  const res = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ action: action, pin: CFG ? CFG.pin : '' }, data || {})) });
+  const j = await res.json();
+  if (!j.ok) { const e = new Error(j.error || 'error'); e.server = true; throw e; }
+  return j;
+}
+
+// ============================ UI text ============================
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.title = LANG === 'hi' ? (VJ.TITLE_HI || 'वाहन जाँच') : (VJ.TITLE_EN || 'Vehicle Checking');
+  $('title').textContent = document.title;
+  $('org').textContent = LANG === 'hi' ? (VJ.ORG_HI || '') : (VJ.ORG_EN || '');
+  $('langBtn').textContent = LANG === 'hi' ? 'EN' : 'हिं';
+  document.querySelectorAll('[data-i]').forEach(e => e.textContent = t(e.dataset.i));
+  $('photoBtn').textContent = photoB64 ? t('retake') : t('photoBtn');
+  $('submitBtn').textContent = t('submit');
+  $('driver').placeholder = LANG === 'hi' ? 'पूरा नाम' : 'Full name';
+  $('phone').placeholder = LANG === 'hi' ? '10 अंक' : '10 digits';
+  buildChips(); updateHeader(); renderMine();
+}
+function toggleLang() { setLang(LANG === 'hi' ? 'en' : 'hi'); }
+function setLang(l) { LANG = l; store.set('vj_lang', l); applyLang(); if ($('veh').value) runLookup(); }
+
+function buildChips() {
+  const ty = $('types'); ty.innerHTML = '';
+  t('types').forEach((label, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (vType === TYPE_KEYS[i] ? ' on' : '');
+    b.textContent = label; b.onclick = () => { vType = vType === TYPE_KEYS[i] ? '' : TYPE_KEYS[i]; buildChips(); };
+    ty.appendChild(b);
+  });
+  const rs = $('results'); rs.innerHTML = '';
+  t('results').forEach((label, i) => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = 'chip ' + RESULT_CLS[i] + (vResult === RESULT_KEYS[i] ? ' on' : '');
+    b.textContent = label; b.onclick = () => { vResult = RESULT_KEYS[i]; buildChips(); };
+    rs.appendChild(b);
+  });
+}
+function resultLabel(key) { const i = RESULT_KEYS.indexOf(key); return i >= 0 ? t('results')[i] : key; }
+function resultTag(key) {
+  const s = document.createElement('span');
+  s.className = 'tag ' + (key === 'OK' ? 'ok' : key === 'Seized' ? 'sz' : key ? 'bad' : '');
+  s.textContent = resultLabel(key || 'OK');
+  return s;
+}
+function toast(m, ms) { const x = $('toast'); x.textContent = m; x.style.display = 'block'; clearTimeout(x._t); x._t = setTimeout(() => x.style.display = 'none', ms || 2600); }
+function ago(ms) {
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 1) return t('justNow'); if (m < 60) return t('ago_m', { n: m });
+  if (m < 1440) return t('ago_h', { n: Math.round(m / 60) }); return t('ago_d', { n: Math.round(m / 1440) });
+}
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+// ============================ Header / status ============================
+function updateHeader() {
+  const on = navigator.onLine;
+  $('net').textContent = on ? t('online') : t('offline');
+  $('net').className = 'pill' + (on ? '' : ' off');
+  const q = store.get('vj_q', []);
+  $('qbadge').style.display = q.length ? 'inline-block' : 'none';
+  $('qbadge').textContent = t('queued', { n: q.length });
+  $('whoOfficer').textContent = CFG ? '👮 ' + CFG.officer : '';
+  $('whoPoint').textContent = CFG ? '📍 ' + CFG.point : '';
+  $('gps').textContent = gps ? t('gpsOk', { m: Math.round(gps.acc) }) : (gpsErr ? t('gpsBad') : t('gpsWait'));
+}
+window.addEventListener('online', () => { updateHeader(); syncQueue(); });
+window.addEventListener('offline', updateHeader);
+
+// ============================ Setup ============================
+function openSetup() {
+  $('sPin').value = CFG ? CFG.pin : ''; $('sOfficer').value = CFG ? CFG.officer : ''; $('sPoint').value = CFG ? CFG.point : '';
+  $('setupMsg').textContent = ''; $('setup').classList.add('show');
+}
+async function saveSetup() {
+  const c = { pin: $('sPin').value.trim(), officer: $('sOfficer').value.trim().slice(0, 60), point: $('sPoint').value.trim().slice(0, 60) };
+  if (!c.pin || !c.officer || !c.point) { $('setupMsg').textContent = t('fillAll'); return; }
+  const prev = CFG; CFG = c;
+  if (navigator.onLine) {
+    try { await api('login', { role: 'staff' }); }
+    catch (e) {
+      if (e.server) { CFG = prev; $('setupMsg').textContent = /SETUP/.test(e.message) ? t('serverSetup') : t('badPin'); return; }
+      $('setupMsg').textContent = e.message; CFG = prev; return;
+    }
+  }
+  store.set('vj_cfg', c);
+  $('setup').classList.remove('show');
+  updateHeader(); syncQueue();
+}
+
+// ============================ GPS ============================
+function startGps() {
+  if (!navigator.geolocation) { gpsErr = true; updateHeader(); return; }
+  navigator.geolocation.watchPosition(p => {
+    gps = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, at: Date.now() };
+    gpsErr = false; updateHeader();
+  }, () => { gpsErr = true; updateHeader(); }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
+}
+
+// ============================ Vehicle number + history ============================
+function cleanVeh(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+function cleanPhone() {
+  let d = $('phone').value.replace(/\D/g, '');
+  if (d.length === 12 && d.indexOf('91') === 0) d = d.slice(2);
+  if (d.length === 11 && d[0] === '0') d = d.slice(1);
+  return /^[6-9]\d{9}$/.test(d) ? d : '';
+}
+$('veh').addEventListener('input', () => {
+  const v = cleanVeh($('veh').value);
+  if ($('veh').value !== v) $('veh').value = v;
+  const ok = /^[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{1,4}$/.test(v) || /^\d{2}BH\d{4}[A-Z]{1,2}$/.test(v);
+  $('vehHint').className = 'hint' + (v.length >= 6 && !ok ? ' warn' : '');
+  scheduleLookup(v.length >= 6 ? 700 : -1);
+});
+$('phone').addEventListener('input', () => { if (cleanPhone()) scheduleLookup(500); });
+$('driver').addEventListener('change', () => { if ($('driver').value.trim().split(/\s+/).length >= 2) scheduleLookup(300); });
+
+function scheduleLookup(ms) {
+  clearTimeout(lookTimer);
+  if (ms < 0) { $('hist').style.display = 'none'; return; }
+  lookTimer = setTimeout(runLookup, ms);
+}
+async function runLookup() {
+  const v = cleanVeh($('veh').value);
+  if (v.length < 6 && !cleanPhone()) return;
+  const box = $('hist'), head = $('histHead'), body = $('histBody');
+  box.style.display = 'block'; box.className = '';
+  if (!navigator.onLine) { head.textContent = t('offlineHist'); body.innerHTML = ''; return; }
+  head.textContent = t('looking'); body.innerHTML = '';
+  const seq = ++lookSeq;
+  try {
+    const r = await api('lookup', { vehicle: v, phone: cleanPhone(), name: $('driver').value.trim() });
+    if (seq === lookSeq) renderHistory(r, v);
+  } catch (e) {
+    if (seq !== lookSeq) return;
+    if (e.server && e.message === 'PIN') { openSetup(); $('setupMsg').textContent = t('badPin'); }
+    head.textContent = navigator.onLine ? t('histErr') + e.message : t('offlineHist');
+  }
+}
+function renderHistory(r, v) {
+  const box = $('hist'), head = $('histHead'), body = $('histBody');
+  body.innerHTML = '';
+  if (r.watch && r.watch.length) {
+    box.className = 'red'; head.textContent = t('watch');
+    const wl = LANG === 'hi' ? { Vehicle: 'वाहन', Mobile: 'मोबाइल', Name: 'नाम' } : {};
+    r.watch.forEach(w => body.appendChild(el('div', 'watch', '🚨 ' + (wl[w.type] || w.type) + ': ' + w.value + (w.reason ? ' — ' + w.reason : ''))));
+    const top = $('alertTop'); top.textContent = t('watch') + ' ' + v; top.style.display = 'block';
+    try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 400]); } catch (e) {}
+  }
+  const vh = r.vehicle;
+  if (vh && vh.total) {
+    if (box.className !== 'red') box.className = 'seen';
+    if (box.className !== 'red') head.textContent = t('seenBefore', { n: vh.total });
+    else body.appendChild(el('div', 'hb', t('seenBefore', { n: vh.total })));
+    const b = el('div', 'hb');
+    const L = vh.items[0];
+    if (L) {
+      const last = el('div', 'hlast');
+      last.appendChild(el('div', '', '🕘 ' + t('last') + ': ' + L.time + ' (' + ago(L.ms) + ')'));
+      last.appendChild(el('div', '', '📍 ' + L.point + (L.officer ? ' · 👮 ' + L.officer : '')));
+      const p = el('div', '', '👤 ' + (L.name || '—') + (L.type ? ' · ' + L.type : '') + ' '); p.appendChild(resultTag(L.result)); last.appendChild(p);
+      if (L.flags) last.appendChild(el('div', 'hint', L.flags.split('|')[0]));
+      if (L.photo) { const sb = el('button', 'see', t('view')); sb.type = 'button'; sb.style.marginTop = '6px'; sb.onclick = () => viewPhoto(L); last.appendChild(sb); }
+      b.appendChild(last);
+    }
+    if (vh.last24h > 1) b.appendChild(el('div', 'warn', t('in24', { n: vh.last24h })));
+    if (vh.drivers.length > 1) b.appendChild(el('div', '', t('drivers') + ': ' + vh.drivers.join(', ')));
+    vh.items.slice(1).forEach(x => {
+      const it = el('div', 'hitem');
+      const left = el('div'); left.appendChild(el('div', '', x.time + ' · ' + x.point));
+      const s = el('small', '', (x.name || '—') + ' '); s.appendChild(resultTag(x.result)); left.appendChild(s);
+      it.appendChild(left);
+      if (x.photo) { const sb = el('button', 'see', t('view')); sb.type = 'button'; sb.onclick = () => viewPhoto(x); it.appendChild(sb); }
+      b.appendChild(it);
+    });
+    body.appendChild(b);
+  } else if (v.length >= 6 && box.className !== 'red') {
+    box.className = 'new'; head.textContent = t('firstTime');
+  }
+  if (r.phone && r.phone.total && r.phone.vehicles.length) body.appendChild(el('div', 'hb warn', t('phoneSeen', { n: r.phone.total, v: r.phone.vehicles.join(', ') })));
+  if (r.name && r.name.total) body.appendChild(el('div', 'hb', t('nameSeen', { n: r.name.total }) + ': ' + [...new Set(r.name.items.map(x => x.vehicle))].join(', ')));
+}
+
+// ============================ Photo viewer ============================
+async function viewPhoto(x) {
+  $('vInfo').textContent = x.vehicle + ' · ' + x.time + ' · ' + x.point + ' · ' + (x.name || '');
+  $('vImg').textContent = t('loadingPhoto');
+  $('viewer').classList.add('show');
+  try {
+    const r = await api('photo', { id: x.photo });
+    $('vImg').innerHTML = '';
+    if (r.data) { const im = el('img'); im.src = r.data; $('vImg').appendChild(im); } else $('vImg').textContent = t('noPhoto');
+  } catch (e) { $('vImg').textContent = '⚠ ' + e.message; }
+}
+function closeViewer() { $('viewer').classList.remove('show'); }
+
+// ============================ Photo: one small JPEG ============================
+$('photoIn').addEventListener('change', () => {
+  const f = $('photoIn').files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 800;
+      let w = img.width, h = img.height;
+      if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      let q = 0.6, url = c.toDataURL('image/jpeg', q);
+      while (url.length > 100000 && q > 0.35) { q -= 0.08; url = c.toDataURL('image/jpeg', q); }   // keep ≈ 70 KB or less
+      photoB64 = url.split(',')[1];
+      photoHash = dHash(img);
+      $('preview').src = url; $('preview').style.display = 'block';
+      $('photoBtn').textContent = t('retake');
+    };
+    img.src = ev.target.result;
+  };
+  rd.readAsDataURL(f);
+});
+function dHash(img) {
+  try {
+    const c = document.createElement('canvas'); c.width = 9; c.height = 8;
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0, 9, 8);
+    const d = g.getImageData(0, 0, 9, 8).data; let bits = '';
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+      const i = (y * 9 + x) * 4, j = i + 4;
+      bits += (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) > (d[j] * .299 + d[j + 1] * .587 + d[j + 2] * .114) ? '1' : '0';
+    }
+    let hex = ''; for (let k = 0; k < 64; k += 4) hex += parseInt(bits.substr(k, 4), 2).toString(16);
+    return hex;
+  } catch (e) { return ''; }
+}
+
+// ============================ Submit (online or offline queue) ============================
+function showMsg(text, cls) { $('msg').textContent = text; $('msg').className = cls || ''; }
+async function submitCheck() {
+  if (!CFG) { openSetup(); return; }
+  const v = cleanVeh($('veh').value), name = $('driver').value.trim(), phoneTyped = $('phone').value.trim(), phone = cleanPhone();
+  if (v.length < 4) { showMsg(t('needVeh'), 'err'); $('veh').focus(); return; }
+  if (!photoB64) { showMsg(t('needPhoto'), 'err'); return; }
+  if (!name) { showMsg(t('needName'), 'err'); $('driver').focus(); return; }
+  if (phoneTyped && !phone) { showMsg(t('badPhone'), 'err'); return; }
+  const fresh = gps && Date.now() - gps.at < 300000;
+  if (!fresh && !noGpsOk) { noGpsOk = true; showMsg(t('noGps'), 'err'); return; }
+
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), ts: Date.now(),
+    vehicle: v, type: vType, driver: name, phone: phone, result: vResult, remarks: $('remarks').value.trim(),
+    point: CFG.point, officer: CFG.officer,
+    lat: fresh ? gps.lat : '', lng: fresh ? gps.lng : '', acc: fresh ? Math.round(gps.acc) : '',
+    photo: photoB64, hash: photoHash
+  };
+  const btn = $('submitBtn'); btn.disabled = true; btn.textContent = t('sending'); showMsg('');
+  let resText = '', cls = 'ok', flags = '';
+  try {
+    if (!navigator.onLine) throw new TypeError('offline');
+    const r = await api('submit', { entry: entry });
+    resText = r.dup ? t('dup', { v: v }) : t('saved', { v: v }); flags = r.flags || '';
+  } catch (e) {
+    if (e.server) {
+      btn.disabled = false; btn.textContent = t('submit');
+      if (e.message === 'PIN') { openSetup(); $('setupMsg').textContent = t('badPin'); }
+      showMsg(t('failed') + e.message, 'err'); return;
+    }
+    entry.offline = true;
+    const q = store.get('vj_q', []); q.push(entry);
+    if (!store.set('vj_q', q)) { btn.disabled = false; btn.textContent = t('submit'); showMsg(t('storageFull'), 'err'); return; }
+    resText = t('savedOff', { v: v }); cls = 'ok';
+  }
+  addMine(entry);
+  btn.disabled = false; btn.textContent = t('submit');
+  const res = $('result'); res.innerHTML = '';
+  res.appendChild(el('div', cls, resText));
+  if (flags) { const f = el('div', 'hint warn', t('flags') + ': ' + flags); f.style.marginTop = '6px'; res.appendChild(f); }
+  res.classList.add('show');
+  resetForm(); updateHeader();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => $('veh').focus(), 400);
+}
+function resetForm() {
+  ['veh', 'driver', 'phone', 'remarks'].forEach(id => $(id).value = '');
+  photoB64 = ''; photoHash = ''; vType = ''; vResult = 'OK'; noGpsOk = false;
+  $('photoIn').value = ''; $('preview').style.display = 'none'; $('photoBtn').textContent = t('photoBtn');
+  $('hist').style.display = 'none'; $('alertTop').style.display = 'none'; showMsg('');
+  buildChips();
+}
+
+let syncing = false;
+async function syncQueue(manual) {
+  if (syncing || !CFG || !navigator.onLine) { if (manual && !navigator.onLine) toast(t('offline')); return; }
+  let q = store.get('vj_q', []);
+  if (!q.length) { if (manual) toast(t('online')); return; }
+  syncing = true; let sent = 0;
+  try {
+    while (q.length) {
+      const e = q[0];
+      try { await api('submit', { entry: e }); sent++; }
+      catch (err) {
+        if (!err.server) break;                                 // network again – try later
+        if (err.message === 'PIN' || /SETUP/.test(err.message)) { openSetup(); break; }
+        e.tries = (e.tries || 0) + 1;                           // bad entry – keep a few tries, then park it
+        if (e.tries < 3) { store.set('vj_q', q); break; }
+        const failed = store.get('vj_failed', []); failed.push(e); store.set('vj_failed', failed.slice(-20));
+      }
+      q.shift(); store.set('vj_q', q);
+    }
+  } finally {
+    syncing = false; updateHeader();
+    if (sent) toast(t('synced', { n: sent }));
+  }
+}
+setInterval(() => syncQueue(), 30000);
+
+// ============================ This phone's checks today (no photos stored) ============================
+function todayKey() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function addMine(e) {
+  const m = store.get('vj_mine', { day: todayKey(), list: [] });
+  if (m.day !== todayKey()) { m.day = todayKey(); m.list = []; }
+  m.list.unshift({ ts: e.ts, vehicle: e.vehicle, name: e.driver, result: e.result, off: !!e.offline });
+  m.list = m.list.slice(0, 300); store.set('vj_mine', m); renderMine();
+}
+function renderMine() {
+  const m = store.get('vj_mine', { day: todayKey(), list: [] });
+  const list = m.day === todayKey() ? m.list : [];
+  $('mineCount').textContent = list.length;
+  const box = $('mineList'); box.innerHTML = '';
+  list.forEach(x => {
+    const d = el('div');
+    const tm = new Date(x.ts);
+    d.appendChild(el('span', '', String(tm.getHours()).padStart(2, '0') + ':' + String(tm.getMinutes()).padStart(2, '0') + '  ' + x.vehicle + ' · ' + (x.name || '')));
+    d.appendChild(resultTag(x.result));
+    box.appendChild(d);
+  });
+}
+
+// ============================ Start ============================
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+applyLang();
+startGps();
+if (!CFG) openSetup(); else syncQueue();
+</script>
+</body>
+</html>
