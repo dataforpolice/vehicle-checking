@@ -9,5 +9,9 @@ window.VJ = {
   TITLE_HI: 'वाहन जाँच',
   TITLE_EN: 'Vehicle Checking',
   ORG_HI: '',            // optional second line, e.g. 'ज़िला पुलिस करनाल'
-  ORG_EN: ''             // e.g. 'District Police Karnal'
+  ORG_EN: '',            // e.g. 'District Police Karnal'
+
+  // Dashboard: checks made within this many metres of each other (by GPS) are counted as ONE naka,
+  // even if staff typed the naka name differently. 50 suits most nakas; use 100 for a big junction.
+  CLUB_METERS: 50
 };
