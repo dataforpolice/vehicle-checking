@@ -182,6 +182,10 @@
         </div>
       </div>
       <div class="row"><span class="lbl" data-i="fPoint"></span><div class="seg" id="cpChips"></div></div>
+      <div class="row"><span class="lbl"></span>
+        <label class="upd"><input type="checkbox" id="club" checked> <span id="clubLbl"></span></label>
+        <label class="upd"><input type="checkbox" id="fuzzy" checked> <span data-i="fuzzy"></span></label>
+      </div>
       <div class="row">
         <span class="lbl" data-i="fTime"></span>
         <select id="hFrom"></select> – <select id="hTo"></select>
@@ -235,6 +239,7 @@
   <div class="card">
     <h2><span data-i="pointTitle"></span><span class="hint" data-i="pointHint"></span></h2>
     <div class="scroll"><table class="tbl" id="t_point"></table></div>
+    <div class="hint" id="clubNote" style="margin-top:6px;display:none"></div>
   </div>
 
   <div class="grid2">
@@ -315,6 +320,9 @@ const I18N = {
     stKeep: 'हमेशा रखी जाती हैं', trunc: '⚠ इस अवधि में {t} एंट्री हैं — सिर्फ़ नई {n} दिख रही हैं। छोटी अवधि चुनें।',
     rTitle: '🚔 वाहन जाँच रिपोर्ट', rPeriod: 'अवधि', rFilters: 'फ़िल्टर', rLine: 'जाँच {t} · वाहन {v} · नाका {p} · 🚨 {w} · ⚠ {f}',
     rRes: '✅ परिणाम:', rPoints: '📍 नाका-वार:', rWatch: '🚨 वॉचलिस्ट:', rRep: '🔁 दोबारा जाँचे:', rMore: 'और', noName: '(नाम नहीं)',
+    club: '📍 {m} मीटर के अंदर की जाँच को एक ही नाका मानें (GPS से)', alsoTyped: 'स्टाफ़ ने यह भी लिखा:',
+    fuzzy: '🔤 थोड़े अलग लिखे नाम (Chowk / chownk / चौक) एक ही नाका मानें',
+    clubNote: '📍 {n} अलग लिखे नाम एक ही नाके में जोड़े गए (स्पेलिंग मिलती-जुलती या {m} मीटर के अंदर)। बंद करने के लिए: ⚙ और फ़िल्टर → 📍 नाका।',
     minAgo: '{n} मिनट पहले', hrAgo: '{n} घंटे पहले', dayAgo: '{n} दिन पहले', justNow: 'अभी',
     results: { 'OK': '✔ ठीक', 'Challan': '📝 चालान', 'Warning': '⚠ चेतावनी', 'Seized': '🚫 ज़ब्त', 'Further check': '🔍 आगे जाँच' },
     csvHead: 'समय,वाहन,प्रकार,चालक,मोबाइल,नाका,अधिकारी,परिणाम,टिप्पणी,स्थिति,अक्षांश,देशांतर,फ़्लैग'
@@ -350,6 +358,9 @@ const I18N = {
     stKeep: 'kept forever', trunc: '⚠ This period has {t} entries — only the newest {n} are shown. Choose a shorter period.',
     rTitle: '🚔 Vehicle Checking Report', rPeriod: 'Period', rFilters: 'Filters', rLine: 'Checks {t} · Vehicles {v} · Points {p} · 🚨 {w} · ⚠ {f}',
     rRes: '✅ Results:', rPoints: '📍 By point:', rWatch: '🚨 Watchlist:', rRep: '🔁 Repeat:', rMore: 'more', noName: '(no name)',
+    club: '📍 Treat checks within {m} m of each other as one point (by GPS)', alsoTyped: 'Also typed as:',
+    fuzzy: '🔤 Treat slightly different spellings (Chowk / chownk / चौक) as one point',
+    clubNote: '📍 {n} differently typed name(s) merged into existing points (similar spelling or within {m} m). To turn off: ⚙ More filters → 📍 Point.',
     minAgo: '{n} min ago', hrAgo: '{n} h ago', dayAgo: '{n} days ago', justNow: 'just now',
     results: { 'OK': '✔ OK', 'Challan': '📝 Challan', 'Warning': '⚠ Warning', 'Seized': '🚫 Seized', 'Further check': '🔍 Further check' },
     csvHead: 'Time,Vehicle,Type,Driver,Mobile,Point,Officer,Result,Remarks,Status,Latitude,Longitude,Flags'
@@ -379,6 +390,7 @@ function resLabel(k) { return (t('results')[k]) || k || '✔'; }
 function applyLang() {
   document.documentElement.lang = LANG;
   document.querySelectorAll('[data-i]').forEach(e => e.textContent = t(e.dataset.i));
+  $('clubLbl').textContent = t('club', { m: Math.max(10, Number(VJ.CLUB_METERS) || 50) });
   document.querySelectorAll('.lang button').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
   $('subtitle').textContent = (LANG === 'hi' ? (VJ.TITLE_HI + (VJ.ORG_HI ? ' · ' + VJ.ORG_HI : '')) : (VJ.TITLE_EN + (VJ.ORG_EN ? ' · ' + VJ.ORG_EN : '')));
   const pl = { today: 'pToday', yday: 'pYday', '7': 'p7', '30': 'p30', month: 'pMonth' };
@@ -406,6 +418,127 @@ function decorate(r) {
            time: fmtTime(r[0]), day: fmtD.format(new Date(r[0])), hour: Number(fmtH.format(new Date(r[0]))) % 24,
            state: /^\d\dBH/.test(r[1]) ? 'BH' : (r[1].match(/^[A-Z]{2}/) || [''])[0] };
 }
+// ---------- club checks made at the same spot into one point (GPS) ----------
+// Checks whose GPS positions are within CLUB_METERS of each other count as ONE point, named after the
+// name staff typed most often there. Checks without GPS join the point where their typed name is used most.
+const CLUB_M = Math.max(10, Number(VJ.CLUB_METERS) || 50);
+let CLUB_MERGED = 0;
+function metres(a, b) {
+  const R = 6371000, toR = Math.PI / 180, x = (b.lng - a.lng) * toR * Math.cos((a.lat + b.lat) / 2 * toR), y = (b.lat - a.lat) * toR;
+  return Math.sqrt(x * x + y * y) * R;
+}
+// ---- naka names typed a little differently: case, spaces, small typos, Hindi/English, Chowk/Chownk ... ----
+const DEV_C = { 'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'n', 'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'n',
+  'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh', 'ण': 'n', 'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n', 'प': 'p', 'फ': 'ph',
+  'ब': 'b', 'भ': 'bh', 'म': 'm', 'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh', 'ष': 'sh', 'स': 's', 'ह': 'h', 'ळ': 'l' };
+const DEV_NUK = { k: 'q', j: 'z', ph: 'f', d: 'r', dh: 'rh', kh: 'kh', g: 'g' };
+const DEV_V = { 'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ii', 'उ': 'u', 'ऊ': 'uu', 'ऋ': 'ri', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au' };
+const DEV_M = { 'ा': 'aa', 'ि': 'i', 'ी': 'ii', 'ु': 'u', 'ू': 'uu', 'ृ': 'ri', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au' };
+const DEV_DIG = { '०': '0', '१': '1', '२': '2', '३': '3', '४': '4', '५': '5', '६': '6', '७': '7', '८': '8', '९': '9' };
+function translit(s) {
+  const ch = Array.from(String(s || '').normalize('NFC')); let out = '';
+  for (let i = 0; i < ch.length; i++) {
+    const c = ch[i];
+    if (DEV_C[c]) { let k = DEV_C[c]; if (ch[i + 1] === '़') { k = DEV_NUK[k] || k; i++; } out += k; const nx = ch[i + 1];
+      if (nx === '्') { i++; continue; } if (DEV_M[nx]) { out += DEV_M[nx]; i++; continue; }
+      if (nx === 'ं' || nx === 'ँ') { out += 'an'; i++; continue; } if (nx && /[ऀ-ॿ]/.test(nx)) out += 'a'; continue; }
+    if (DEV_V[c]) { out += DEV_V[c]; continue; } if (DEV_DIG[c]) { out += DEV_DIG[c]; continue; }
+    if (c === 'ं' || c === 'ँ') { out += 'n'; continue; } if (c === 'ः' || c === '़') continue;
+    out += c;
+  }
+  return out;
+}
+const PT_ALIAS = { sec: 'sector', sect: 'sector', sctr: 'sector', secter: 'sector', sektar: 'sector', rd: 'road', rod: 'road',
+  chownk: 'chowk', chouk: 'chowk', chauk: 'chowk', chok: 'chowk', chawk: 'chowk', chaowk: 'chowk', chuk: 'chowk',
+  stand: 'stand', stnd: 'stand', bustand: 'busstand', hwy: 'highway', nh: 'nh', gt: 'gt', no: '', number: '' };
+const PT_SKIP = { naka: 1, nakka: 1, nakaa: 1, nka: 1, point: 1, pt: 1, checkpoint: 1, check: 1, post: 1, the: 1, near: 1, ke: 1, pass: 1, paas: 1 };
+function spellKey(t) {
+  return t.replace(/w/g, 'v').replace(/ph/g, 'f').replace(/z/g, 'j').replace(/q/g, 'k').replace(/sh/g, 's').replace(/ck/g, 'k')
+    .replace(/ng(?![aeiou])/g, 'n').replace(/ee|ii/g, 'i').replace(/oo|uu/g, 'u').replace(/e/g, 'a').replace(/(.)\1+/g, '$1');
+}
+function lev(a, b) { let p = []; for (let j = 0; j <= b.length; j++) p[j] = j;
+  for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
+  return p[b.length]; }
+// key = { d: the numbers in the name, w: the words as sound-alike keys, sorted }
+function pointKey(name) {
+  const toks = translit(name).toLowerCase().replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2').replace(/[^a-z0-9]+/g, ' ').trim().split(' ');
+  const d = [], w = [], t2 = [];
+  toks.forEach(x => { if (x.length === 1 && /[a-z]/.test(x) && t2.length && /^[a-z]+$/.test(t2[t2.length - 1]) && t2[t2.length - 1].length <= 3 && t2[t2.length - 1]._s)
+      { const j = t2.pop() + x; const s = new String(j); s._s = 1; t2.push(s); }     // g . t . -> gt
+    else { const s = new String(x); s._s = x.length === 1; t2.push(s); } });
+  t2.map(String).forEach(x => { if (!x) return; if (/^\d+$/.test(x)) { d.push(String(Number(x))); return; }
+    x = x.replace(/(.)\1+/g, '$1');                                   // naakaa -> naka, rooad -> road
+    let a = x in PT_ALIAS ? PT_ALIAS[x] : x; if (!a || PT_SKIP[a]) return; a = spellKey(a); if (a.length) w.push(a); });
+  return { d: d.join(','), w: w.sort().join(' ') };
+}
+function sameNaka(a, b) {           // a, b = pointKey results
+  if (a.d !== b.d) return false;    // Sector 12 and Sector 13 are never the same
+  if (!a.w || !b.w) return a.w === b.w && !!a.d;
+  if (a.w === b.w) return true;
+  const x = a.w.replace(/ /g, ''), y = b.w.replace(/ /g, ''), L = Math.max(x.length, y.length);
+  const allow = L >= 12 ? 2 : L >= 5 ? 1 : 0, dist = lev(x, y);
+  if (dist <= allow) return true;
+  // two letters swapped or a vowel moved (Karna / Karan): same first letter and same consonants
+  const sk = s => s[0] + s.slice(1).replace(/[aeiouyh]/g, '');
+  return L >= 6 && dist <= 2 && x[0] === y[0] && sk(x) === sk(y);
+}
+// Groups the typed names: returns typed name -> one display name (the spelling used most often)
+function nameGroups(rows) {
+  const cnt = {}; rows.forEach(r => { const n = (r.typed || '').trim(); if (n) cnt[n] = (cnt[n] || 0) + 1; });
+  const names = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
+  if (!$('fuzzy').checked) { const m = {}; names.forEach(n => m[n] = n); return m; }
+  const keys = names.map(pointKey), par = names.map((_, i) => i);
+  const find = i => par[i] === i ? i : (par[i] = find(par[i]));
+  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++)
+    if (sameNaka(keys[i], keys[j])) { const a = find(i), b = find(j); if (a !== b) par[Math.max(a, b)] = Math.min(a, b); }
+  const m = {}; names.forEach((n, i) => m[n] = names[find(i)]);   // lowest index = most used spelling
+  return m;
+}
+const normName = s => String(s || '').toLowerCase().replace(/[^a-z0-9ऀ-ॿ]/g, '');
+function clubPoints(rows) {
+  rows.forEach(r => { r.typed = r.typed === undefined ? r.point : r.typed; });
+  const ng = nameGroups(rows);
+  rows.forEach(r => { const n = (r.typed || '').trim(); r.point = n ? ng[n] : ''; });
+  CLUB_MERGED = 0;
+  const countMerged = () => { const by = {}; rows.forEach(r => { const n = (r.typed || '').trim(); if (!n) return; (by[r.point] = by[r.point] || {})[n] = 1; });
+    CLUB_MERGED = Object.keys(by).reduce((s, k) => s + Object.keys(by[k]).length - 1, 0); };
+  if (!$('club').checked) { countMerged(); return; }
+  const ok = r => typeof r.lat === 'number' && typeof r.lng === 'number' && isFinite(r.lat) && isFinite(r.lng) && (r.lat || r.lng);
+  const cl = [];
+  rows.filter(ok).sort((a, b) => a.ms - b.ms).forEach(r => {
+    let best = null, bd = Infinity;
+    cl.forEach(c => { const d = metres(c, r); if (d <= CLUB_M && d < bd) { bd = d; best = c; } });
+    if (!best) { best = { lat: r.lat, lng: r.lng, rows: [] }; cl.push(best); }
+    best.rows.push(r); const n = best.rows.length;
+    best.lat += (r.lat - best.lat) / n; best.lng += (r.lng - best.lng) / n;
+  });
+  // join groups whose centres ended up within the distance of each other
+  for (let changed = true; changed;) {
+    changed = false;
+    for (let i = 0; i < cl.length && !changed; i++) for (let j = i + 1; j < cl.length; j++) {
+      if (metres(cl[i], cl[j]) <= CLUB_M) { const a = cl[i], b = cl[j], n = a.rows.length + b.rows.length;
+        a.lat = (a.lat * a.rows.length + b.lat * b.rows.length) / n; a.lng = (a.lng * a.rows.length + b.lng * b.rows.length) / n;
+        a.rows = a.rows.concat(b.rows); cl.splice(j, 1); changed = true; break; }
+    }
+  }
+  // each GPS group takes the (already spelling-merged) name used most there;
+  // a name used mostly at one spot sends its checks without GPS to that spot as well
+  const votes = {};
+  cl.forEach(c => {
+    const cnt = {}, first = {};
+    c.rows.forEach(r => { const k = r.point; if (!k) return; cnt[k] = (cnt[k] || 0) + 1; if (!(k in first)) first[k] = r.ms; });
+    const names = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || first[a] - first[b]);
+    c.name = names[0] || ('📍 ' + c.lat.toFixed(4) + ', ' + c.lng.toFixed(4));
+    names.forEach(n => { if (!votes[n] || votes[n].n < cnt[n]) votes[n] = { n: cnt[n], name: c.name }; });
+    c.rows.forEach(r => { r.point = c.name; });
+  });
+  rows.filter(r => !ok(r)).forEach(r => { if (r.point && votes[r.point]) r.point = votes[r.point].name; });
+  countMerged();
+}
+$('club').checked = store.get('vj_club', true) !== false;
+$('fuzzy').checked = store.get('vj_fuzzy', true) !== false;
+['club', 'fuzzy'].forEach(id => $(id).onchange = () => { store.set('vj_' + id, $(id).checked); clubPoints(ROWS); F.points = []; buildFilterOptions(); shown = 50; render(); });
+
 function ymd(d) { return fmtD.format(d); }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function toast(m) { const x = $('toast'); x.textContent = m; x.style.display = 'block'; setTimeout(() => x.style.display = 'none', 2200); }
@@ -432,7 +565,7 @@ async function load() {
   $('loading').style.display = 'block';
   try {
     const d = await api('dash', { from: $('from').value, to: $('to').value });
-    DATA = d; ROWS = d.rows.map(decorate); buildFilterOptions(); shown = 50; render();
+    DATA = d; ROWS = d.rows.map(decorate); clubPoints(ROWS); buildFilterOptions(); shown = 50; render();
   } catch (e) {
     if (e.server && (e.message === 'PIN' || /SETUP/.test(e.message))) askPin(/SETUP/.test(e.message) ? t('srvSetup') : t('wrongPin'));
     else $('upd').textContent = '⚠ ' + e.message;
@@ -513,7 +646,7 @@ function filtered() {
     if ($('state').value && r.state !== $('state').value) return false;
     if ($('noMobile').checked && r.phone) return false;
     if ($('noGps').checked && r.lat !== null) return false;
-    if (q) { const hay = (r.vehicle + ' ' + r.name + ' ' + r.phone + ' ' + r.point + ' ' + r.officer).toUpperCase();
+    if (q) { const hay = (r.vehicle + ' ' + r.name + ' ' + r.phone + ' ' + r.point + ' ' + (r.typed || '') + ' ' + r.officer).toUpperCase();
       if (hay.indexOf(q) < 0 && !(qd.length >= 3 && r.vehicle.indexOf(qd) >= 0)) return false; }
     return true;
   });
@@ -539,12 +672,13 @@ function render() {
   $('k_today').textContent = DATA.todayTotal;
   SUMMARY = summaryText(list, pts, veh);
   renderReport(list, pts, veh);
+  const cn = $('clubNote'); if (CLUB_MERGED) { cn.textContent = t('clubNote', { n: CLUB_MERGED, m: CLUB_M }); cn.style.display = 'block'; } else cn.style.display = 'none';
   drawPointTable(pts); drawCharts(list, pts); drawMap(list); drawEntries(list); drawRepeats(veh); drawStorage();
 }
 function groupPoints(list) {
   const g = {};
-  list.forEach(r => { const k = r.point || t('noName'); if (!g[k]) g[k] = { name: k, rows: [], flags: 0, watch: 0, last: 0 };
-    g[k].rows.push(r); if (r.level) g[k].flags++; if (r.level === 3) g[k].watch++; g[k].last = Math.max(g[k].last, r.ms); });
+  list.forEach(r => { const k = r.point || t('noName'); if (!g[k]) g[k] = { name: k, rows: [], flags: 0, watch: 0, last: 0, aka: {} };
+    g[k].rows.push(r); const ty = (r.typed || '').trim(); if (ty && normName(ty) !== normName(k)) g[k].aka[ty] = 1; if (r.level) g[k].flags++; if (r.level === 3) g[k].watch++; g[k].last = Math.max(g[k].last, r.ms); });
   return Object.keys(g).map(k => g[k]).sort((a, b) => b.rows.length - a.rows.length);
 }
 function periodText() { const f = $('from').value.split('-').reverse().join('-'), to = $('to').value.split('-').reverse().join('-'); return f === to ? f : f + ' – ' + to; }
@@ -632,6 +766,7 @@ function drawPointTable(pts) {
   if (!pts.length) { const c = tb.insertRow().insertCell(); c.colSpan = 5; c.className = 'empty'; c.textContent = t('none'); return; }
   pts.forEach(g => {
     const r = tb.insertRow(); const n = r.insertCell(); const b = el('button', 'link', g.name); b.type = 'button'; b.onclick = () => setPoint(g.name); n.appendChild(b);
+    const aka = Object.keys(g.aka || {}); if (aka.length) { const a = el('div', 'hint', t('alsoTyped') + ' ' + aka.slice(0, 6).join(', ')); a.style.marginTop = '2px'; n.appendChild(a); }
     r.insertCell().textContent = g.rows.length;
     const vc = r.insertCell(); const seen = {};
     g.rows.slice().sort((a, c) => c.level - a.level || a.ms - c.ms).forEach(x => { if (seen[x.vehicle]) return; seen[x.vehicle] = 1;
