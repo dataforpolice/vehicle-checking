@@ -418,6 +418,7 @@ function decorate(r) {
            time: fmtTime(r[0]), day: fmtD.format(new Date(r[0])), hour: Number(fmtH.format(new Date(r[0]))) % 24,
            state: /^\d\dBH/.test(r[1]) ? 'BH' : (r[1].match(/^[A-Z]{2}/) || [''])[0] };
 }
+const DASH_VERSION = '2.3';   // shown next to "Updated" – tells you the newest dashboard is loaded
 // ---------- club checks made at the same spot into one point (GPS) ----------
 // Checks whose GPS positions are within CLUB_METERS of each other count as ONE point, named after the
 // name staff typed most often there. Checks without GPS join the point where their typed name is used most.
@@ -459,42 +460,74 @@ function spellKey(t) {
 function lev(a, b) { let p = []; for (let j = 0; j <= b.length; j++) p[j] = j;
   for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
   return p[b.length]; }
-// key = { d: the numbers in the name, w: the words as sound-alike keys, sorted }
+// Police words written many ways -> one marker (applied to the whole name, so two-word forms work too).
+// PP (police post / chowki) and PS (police station / thana) must always agree between two names.
+const PT_PHRASES = [
+  [/ (police|polis|pulis|pulish|plice) (post|chowki|chauki|choki|chouki|chaoki) /g, ' #pp '],
+  [/ (police|polis|pulis|pulish|plice) (station|stesan|steshan|stashan|thana) /g, ' #ps '],
+  [/ (pipi|p|chowki|chauki|choki|chouki|chaoki) /g, ' #pp '],     // "pp" is "p" here (double letters made single)
+  [/ (thana|ps|pis|piis) /g, ' #ps ']
+];
+// key = { d: numbers, k: police words (#pp/#ps), w: word keys sorted, c: word keys in typed order, s: sorted and joined }
 function pointKey(name) {
-  const toks = translit(name).toLowerCase().replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2').replace(/[^a-z0-9]+/g, ' ').trim().split(' ');
-  const d = [], w = [], t2 = [];
-  toks.forEach(x => { if (x.length === 1 && /[a-z]/.test(x) && t2.length && /^[a-z]+$/.test(t2[t2.length - 1]) && t2[t2.length - 1].length <= 3 && t2[t2.length - 1]._s)
-      { const j = t2.pop() + x; const s = new String(j); s._s = 1; t2.push(s); }     // g . t . -> gt
-    else { const s = new String(x); s._s = x.length === 1; t2.push(s); } });
-  t2.map(String).forEach(x => { if (!x) return; if (/^\d+$/.test(x)) { d.push(String(Number(x))); return; }
-    x = x.replace(/(.)\1+/g, '$1');                                   // naakaa -> naka, rooad -> road
+  const raw = translit(name).toLowerCase().replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2')
+    .replace(/[^a-z0-9]+/g, ' ').replace(/\b(pp|ps)(?=[a-z]{4,}\b)/g, '$1 ')   // PPJalmana -> PP Jalmana
+    .trim().split(' ').filter(Boolean);
+  const toks = []; let run = false;                       // "p p" / "g.t." -> "pp" / "gt"
+  raw.forEach(x => { const one = x.length === 1 && /[a-z]/.test(x);
+    if (one && run) toks[toks.length - 1] += x; else toks.push(x); run = one; });
+  let str = ' ' + toks.map(x => /^\d+$/.test(x) ? x : x.replace(/(.)\1+/g, '$1')).join(' ') + ' ';   // naakaa -> naka
+  for (let k = 0; k < 2; k++) PT_PHRASES.forEach(([re, to]) => { str = str.replace(re, to); });
+  const d = [], k = [], w = [];
+  str.trim().split(/\s+/).forEach(x => { if (!x) return;
+    if (/^\d+$/.test(x)) { d.push(String(Number(x))); return; }
+    if (x[0] === '#') { if (k.indexOf(x) < 0) k.push(x); return; }
     let a = x in PT_ALIAS ? PT_ALIAS[x] : x; if (!a || PT_SKIP[a]) return; a = spellKey(a); if (a.length) w.push(a); });
-  return { d: d.join(','), w: w.sort().join(' ') };
+  const sorted = w.slice().sort();
+  return { d: d.join(','), k: k.sort().join(','), w: sorted.join(' '), c: w.join(''), s: sorted.join('') };
 }
-function sameNaka(a, b) {           // a, b = pointKey results
-  if (a.d !== b.d) return false;    // Sector 12 and Sector 13 are never the same
-  if (!a.w || !b.w) return a.w === b.w && !!a.d;
-  if (a.w === b.w) return true;
-  const x = a.w.replace(/ /g, ''), y = b.w.replace(/ /g, ''), L = Math.max(x.length, y.length);
-  const allow = L >= 12 ? 2 : L >= 5 ? 1 : 0, dist = lev(x, y);
+function sameNaka(a, b) {             // a, b = pointKey results
+  if (a.d !== b.d) return false;      // Sector 12 and Sector 13 are never the same
+  if (a.k !== b.k) return false;      // PP Jalmana and PS Jalmana are never the same
+  if (!a.w || !b.w) return a.w === b.w && !!(a.d || a.k);
+  if (a.w === b.w || a.c === b.c || a.s === b.s) return true;   // same words, any order, joined or apart
+  const L = Math.max(a.c.length, b.c.length), allow = L >= 12 ? 2 : L >= 5 ? 1 : 0;
+  const dist = Math.min(lev(a.c, b.c), lev(a.s, b.s));
   if (dist <= allow) return true;
   // two letters swapped or a vowel moved (Karna / Karan): same first letter and same consonants
   const sk = s => s[0] + s.slice(1).replace(/[aeiouyh]/g, '');
-  return L >= 6 && dist <= 2 && x[0] === y[0] && sk(x) === sk(y);
+  return L >= 6 && dist <= 2 && (sk(a.c) === sk(b.c) && a.c[0] === b.c[0] || sk(a.s) === sk(b.s) && a.s[0] === b.s[0]);
 }
-// Groups the typed names: returns typed name -> one display name (the spelling used most often)
+const keyStr = k => k.d + '|' + k.k + '|' + k.w;
+// Names the supervisor fixed in config.js (NAKA_ALIASES): any listed spelling -> that exact name
+let CANON = null;
+function canonMap() {
+  if (CANON) return CANON; CANON = {};
+  const A = VJ.NAKA_ALIASES || {};
+  Object.keys(A).forEach(main => { [main].concat(A[main] || []).forEach(x => { CANON[keyStr(pointKey(x))] = main; CANON['=' + normName(x)] = main; }); });
+  return CANON;
+}
+// Groups the typed names: returns typed name -> one display name
+// (a name fixed in config.js, else the spelling used most often). Upper/lower case and spaces never matter.
 function nameGroups(rows) {
-  const cnt = {}; rows.forEach(r => { const n = (r.typed || '').trim(); if (n) cnt[n] = (cnt[n] || 0) + 1; });
-  const names = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
-  if (!$('fuzzy').checked) { const m = {}; names.forEach(n => m[n] = n); return m; }
-  const keys = names.map(pointKey), par = names.map((_, i) => i);
-  const find = i => par[i] === i ? i : (par[i] = find(par[i]));
-  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++)
-    if (sameNaka(keys[i], keys[j])) { const a = find(i), b = find(j); if (a !== b) par[Math.max(a, b)] = Math.min(a, b); }
-  const m = {}; names.forEach((n, i) => m[n] = names[find(i)]);   // lowest index = most used spelling
+  const cnt = {}; rows.forEach(r => { const n = (r.typed || '').trim().replace(/\s+/g, ' '); if (n) cnt[n] = (cnt[n] || 0) + 1; });
+  const names = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || (/[A-Z]/.test(b) ? 1 : 0) - (/[A-Z]/.test(a) ? 1 : 0));
+  const fuzzy = $('fuzzy').checked, cm = canonMap();
+  const keys = names.map(pointKey), nn = names.map(normName);
+  const canon = names.map((n, i) => cm['=' + nn[i]] || (fuzzy ? cm[keyStr(keys[i])] : '') || '');
+  const par = names.map((_, i) => i), find = i => par[i] === i ? i : (par[i] = find(par[i]));
+  const join = (i, j) => { const a = find(i), b = find(j); if (a !== b) par[Math.max(a, b)] = Math.min(a, b); };
+  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+    if (nn[i] && nn[i] === nn[j]) join(i, j);                       // only case / spaces / dots differ
+    else if (canon[i] && canon[i] === canon[j]) join(i, j);         // both listed under one name in config.js
+    else if (fuzzy && sameNaka(keys[i], keys[j])) join(i, j);
+  }
+  const label = {}; names.forEach((n, i) => { const r = find(i); if (canon[i]) label[r] = canon[i]; });
+  const m = {}; names.forEach((n, i) => { const r = find(i); m[n] = label[r] || names[r]; });
+  rows.forEach(r => { const t = (r.typed || '').trim(); if (t && !(t in m)) m[t] = m[t.replace(/\s+/g, ' ')]; });
   return m;
 }
-const normName = s => String(s || '').toLowerCase().replace(/[^a-z0-9ऀ-ॿ]/g, '');
+const normName = s => translit(s).toLowerCase().replace(/[^a-z0-9]/g, '');
 function clubPoints(rows) {
   rows.forEach(r => { r.typed = r.typed === undefined ? r.point : r.typed; });
   const ng = nameGroups(rows);
@@ -660,7 +693,7 @@ function render() {
   const list = filtered(), nAct = activeFilters().length;
   $('moreBtn').innerHTML = ''; $('moreBtn').appendChild(document.createTextNode($('moreFilters').style.display === 'block' ? t('less') : t('more')));
   if (nAct) $('moreBtn').appendChild(el('span', 'badge', nAct));
-  $('upd').textContent = t('updated') + ': ' + fmtTime(DATA.updated);
+  $('upd').textContent = t('updated') + ': ' + fmtTime(DATA.updated) + ' · v' + DASH_VERSION;
   $('allTime').textContent = (LANG === 'hi' ? 'कुल रिकॉर्ड: ' : 'All records: ') + DATA.totalAllTime;
   const tn = $('truncNote'); if (DATA.truncated) { tn.textContent = t('trunc', { t: DATA.totalInRange, n: DATA.rows.length }); tn.style.display = 'block'; } else tn.style.display = 'none';
   const ab = $('alertbar'); if (DATA.todayWatch) { ab.textContent = t('todayAlert', { n: DATA.todayWatch }); ab.style.display = 'block'; } else ab.style.display = 'none';
