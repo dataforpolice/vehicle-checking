@@ -15,6 +15,6 @@ window.VJ = {
   // even if staff typed the naka name differently. 50 suits most nakas; use 100 for a big junction.
   CLUB_METERS: 50,
   NAKA_ALIASES: {
-    'Highway traffic ps': ['Ps highway karnal'],
+    'Highway traffic ps': ['Ps highway karnal']
   }
 };
