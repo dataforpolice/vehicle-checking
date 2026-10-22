@@ -14,4 +14,7 @@ window.VJ = {
   // Dashboard: checks made within this many metres of each other (by GPS) are counted as ONE naka,
   // even if staff typed the naka name differently. 50 suits most nakas; use 100 for a big junction.
   CLUB_METERS: 50
+  NAKA_ALIASES: {
+    'Highway traffic ps': ['Ps highway karnal'],
+  }
 };
