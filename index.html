@@ -173,8 +173,16 @@
     <label class="f" for="sOfficer" data-i="officer"></label>
     <input type="text" id="sOfficer" autocomplete="off">
     <div class="gap"></div>
-    <label class="f" for="sPoint" data-i="point"></label>
+    <label class="f" data-i="point"></label>
+    <div class="chips" id="unitChips">
+      <button type="button" class="chip" data-u="PS" onclick="setUnit('PS')" data-i="uPS"></button>
+      <button type="button" class="chip" data-u="PP" onclick="setUnit('PP')" data-i="uPP"></button>
+      <button type="button" class="chip" data-u="ERV" onclick="setUnit('ERV')" data-i="uERV"></button>
+      <button type="button" class="chip" data-u="NAKA" onclick="setUnit('NAKA')" data-i="uNAKA"></button>
+    </div>
+    <div class="gap" style="height:6px"></div>
     <input type="text" id="sPoint" autocomplete="off">
+    <div class="hint" id="unitHint"></div>
     <div class="gap"></div>
     <div class="chips"><button type="button" class="chip" onclick="setLang('hi')">हिंदी</button><button type="button" class="chip" onclick="setLang('en')">English</button></div>
     <div class="gap"></div>
@@ -201,7 +209,9 @@ const T = {
     photoHint: 'एक ही साफ़ फ़ोटो — चालक का चेहरा और हो सके तो नंबर प्लेट दिखे', driver: '👤 चालक / व्यक्ति का नाम',
     mobile: '📱 मोबाइल नंबर', optional: '(वैकल्पिक)', result: '✅ जाँच का परिणाम', addRemark: '+ टिप्पणी जोड़ें',
     submit: '✅ जमा करें', sending: '⏳ जमा हो रहा है...', mine: '📋 इस फ़ोन से आज की जाँच',
-    setupTitle: '⚙ सेटअप', pin: '🔒 स्टाफ़ PIN', officer: '👮 आपका नाम / बेल्ट नंबर', point: '📍 नाका / पॉइंट का नाम',
+    setupTitle: '⚙ सेटअप', pin: '🔒 स्टाफ़ PIN', officer: '👮 आपका नाम / बेल्ट नंबर', point: '🏢 आपकी ड्यूटी: PS / PP / ERV / नाका', uPS: 'PS (थाना)', uPP: 'PP (चौकी)', uERV: 'ERV (112 गाड़ी)', uNAKA: 'नाका',
+    unitPh: { PS: 'थाने का नाम, जैसे Sadar', PP: 'चौकी का नाम, जैसे Jalmana', ERV: 'ERV नंबर, जैसे 23', NAKA: 'नाके का नाम, जैसे Namaste Chowk', '': 'पहले ऊपर PS / PP / ERV / नाका चुनें' },
+    unitEx: 'सेव होगा: ', needUnit: 'PS / PP / ERV / नाका में से एक चुनें',
     save: 'सेव करें और शुरू करें', close: '✕ बंद करें',
     types: ['दो-पहिया', 'कार / जीप', 'ट्रक / पिकअप', 'ऑटो / ई-रिक्शा', 'बस', 'अन्य'],
     results: ['✔ ठीक', '📝 चालान', '⚠ चेतावनी', '🚫 ज़ब्त / हिरासत', '🔍 आगे जाँच'],
@@ -216,7 +226,7 @@ const T = {
     noGps: '⚠ लोकेशन अभी नहीं मिली। बिना लोकेशन जमा करने के लिए दोबारा "जमा करें" दबाएँ।',
     saved: '✅ जमा हो गया — {v}', savedOff: '📴 फ़ोन में सेव — नेटवर्क आते ही अपने-आप भेजा जाएगा ({v})',
     dup: '✅ पहले ही जमा था — {v}', failed: '❌ जमा नहीं हुआ: ', needSetup: 'पहले सेटअप पूरा करें', badPin: '❌ PIN गलत है',
-    serverSetup: '⚠ सर्वर में PIN सेट नहीं — एडमिन को बताएँ', fillAll: 'PIN, नाम और नाका तीनों भरें',
+    serverSetup: '⚠ सर्वर में PIN सेट नहीं — एडमिन को बताएँ', fillAll: 'PIN, अपना नाम और PS / PP / ERV / नाके का नाम भरें',
     noApi: '⚠ config.js में API_URL नहीं डाला गया', synced: '✅ {n} जाँच भेज दी गईं', ago_m: '{n} मिनट पहले', ago_h: '{n} घंटे पहले',
     ago_d: '{n} दिन पहले', justNow: 'अभी', flags: '🚩 मिलान', storageFull: '⚠ फ़ोन की जगह भर गई — पहले नेटवर्क पर भेजें',
     loadingPhoto: '⏳ फ़ोटो लोड हो रही है…'
@@ -227,7 +237,9 @@ const T = {
     photoHint: 'One clear photo — driver\'s face and, if possible, the number plate', driver: '👤 Driver / person name',
     mobile: '📱 Mobile number', optional: '(optional)', result: '✅ Result of check', addRemark: '+ Add remark',
     submit: '✅ Submit', sending: '⏳ Submitting...', mine: '📋 Today\'s checks from this phone',
-    setupTitle: '⚙ Setup', pin: '🔒 Staff PIN', officer: '👮 Your name / belt no.', point: '📍 Naka / point name',
+    setupTitle: '⚙ Setup', pin: '🔒 Staff PIN', officer: '👮 Your name / belt no.', point: '🏢 Your duty: PS / PP / ERV / Naka', uPS: 'PS (Police Station)', uPP: 'PP (Police Post)', uERV: 'ERV (112 vehicle)', uNAKA: 'Naka',
+    unitPh: { PS: 'Station name, e.g. Sadar', PP: 'Post name, e.g. Jalmana', ERV: 'ERV number, e.g. 23', NAKA: 'Naka name, e.g. Namaste Chowk', '': 'First choose PS / PP / ERV / Naka above' },
+    unitEx: 'Will be saved as: ', needUnit: 'Choose PS, PP, ERV or Naka',
     save: 'Save and start', close: '✕ Close',
     types: ['Two-wheeler', 'Car / Jeep', 'Truck / Pickup', 'Auto / E-rickshaw', 'Bus', 'Other'],
     results: ['✔ OK', '📝 Challan', '⚠ Warning', '🚫 Seized / Detained', '🔍 Further check'],
@@ -284,6 +296,7 @@ function applyLang() {
   $('org').textContent = LANG === 'hi' ? (VJ.ORG_HI || '') : (VJ.ORG_EN || '');
   $('langBtn').textContent = LANG === 'hi' ? 'EN' : 'हिं';
   document.querySelectorAll('[data-i]').forEach(e => e.textContent = t(e.dataset.i));
+  if ($('unitChips')) showUnit();
   $('photoBtn').textContent = photoB64 ? t('retake') : t('photoBtn');
   $('submitBtn').textContent = t('submit');
   $('driver').placeholder = LANG === 'hi' ? 'पूरा नाम' : 'Full name';
@@ -332,19 +345,41 @@ function updateHeader() {
   $('qbadge').style.display = q.length ? 'inline-block' : 'none';
   $('qbadge').textContent = t('queued', { n: q.length });
   $('whoOfficer').textContent = CFG ? '👮 ' + CFG.officer : '';
-  $('whoPoint').textContent = CFG ? '📍 ' + CFG.point : '';
+  $('whoPoint').textContent = CFG ? '🏢 ' + CFG.point : '';
   $('gps').textContent = gps ? t('gpsOk', { m: Math.round(gps.acc) }) : (gpsErr ? t('gpsBad') : t('gpsWait'));
 }
 window.addEventListener('online', () => { updateHeader(); syncQueue(); });
 window.addEventListener('offline', updateHeader);
 
 // ============================ Setup ============================
+// Duty = PS (police station) / PP (police post) / ERV (112 vehicle) / NAKA + its name or number
+// -> saved as "PP Jalmana", "ERV 23", "NAKA Namaste Chowk"
+let UNIT = '';
+const UNIT_RE = /^\s*(PS|PP|ERV|NAKA)\b[\s.:\-]*/i;
+function setUnit(u) { UNIT = u; $('setupMsg').textContent = ''; showUnit(); $('sPoint').focus(); }
+function unitName() {
+  let n = $('sPoint').value.replace(/\s+/g, ' ').trim().replace(UNIT_RE, '');   // staff may type "PP Jalmana" themselves
+  if (UNIT === 'ERV') n = n.replace(/^(no\.?|number|नंबर)\s*/i, '');
+  if (UNIT === 'NAKA') n = n.replace(/\s*\b(naka|नाका)$/i, '').replace(/^नाका\s*/, '');   // "Namaste Chowk Naka" -> "Namaste Chowk"
+  return n;
+}
+function showUnit() {
+  document.querySelectorAll('#unitChips .chip').forEach(b => b.classList.toggle('on', b.dataset.u === UNIT));
+  $('sPoint').placeholder = t('unitPh')[UNIT] || t('unitPh')[''];
+  $('sPoint').inputMode = UNIT === 'ERV' ? 'numeric' : 'text';
+  const n = unitName(); $('unitHint').textContent = UNIT && n ? t('unitEx') + UNIT + ' ' + n : '';
+}
 function openSetup() {
-  $('sPin').value = CFG ? CFG.pin : ''; $('sOfficer').value = CFG ? CFG.officer : ''; $('sPoint').value = CFG ? CFG.point : '';
-  $('setupMsg').textContent = ''; $('setup').classList.add('show');
+  $('sPin').value = CFG ? CFG.pin : ''; $('sOfficer').value = CFG ? CFG.officer : '';
+  const old = CFG ? CFG.point : '', m = old.match(UNIT_RE);
+  UNIT = m ? m[1].toUpperCase() : (old ? 'NAKA' : '');            // set up before PS/PP/ERV existed = a naka
+  $('sPoint').value = m ? old.replace(UNIT_RE, '') : old;
+  showUnit(); $('setupMsg').textContent = ''; $('setup').classList.add('show');
 }
 async function saveSetup() {
-  const c = { pin: $('sPin').value.trim(), officer: $('sOfficer').value.trim().slice(0, 60), point: $('sPoint').value.trim().slice(0, 60) };
+  const n = unitName();
+  if (!UNIT) { $('setupMsg').textContent = t('needUnit'); return; }
+  const c = { pin: $('sPin').value.trim(), officer: $('sOfficer').value.trim().slice(0, 60), point: n ? (UNIT + ' ' + n).slice(0, 60) : '' };
   if (!c.pin || !c.officer || !c.point) { $('setupMsg').textContent = t('fillAll'); return; }
   const prev = CFG; CFG = c;
   if (navigator.onLine) {
@@ -358,6 +393,8 @@ async function saveSetup() {
   $('setup').classList.remove('show');
   updateHeader(); syncQueue();
 }
+
+$('sPoint').addEventListener('input', showUnit);
 
 // ============================ GPS ============================
 function startGps() {

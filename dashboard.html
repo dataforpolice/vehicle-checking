@@ -504,7 +504,7 @@ function decorate(r) {
            time: fmtTime(r[0]), day: fmtD.format(new Date(r[0])), hour: Number(fmtH.format(new Date(r[0]))) % 24,
            state: /^\d\dBH/.test(r[1]) ? 'BH' : (r[1].match(/^[A-Z]{2}/) || [''])[0] };
 }
-const DASH_VERSION = '2.4';   // shown next to "Updated" – tells you the newest dashboard is loaded
+const DASH_VERSION = '2.5';   // shown next to "Updated" – tells you the newest dashboard is loaded
 // ---------- club checks made at the same spot into one point (GPS) ----------
 // Checks whose GPS positions are within CLUB_METERS of each other count as ONE point, named after the
 // name staff typed most often there. Checks without GPS join the point where their typed name is used most.
@@ -622,7 +622,8 @@ function clubPoints(rows) {
   const countMerged = () => { const by = {}; rows.forEach(r => { const n = (r.typed || '').trim(); if (!n) return; (by[r.point] = by[r.point] || {})[n] = 1; });
     CLUB_MERGED = Object.keys(by).reduce((s, k) => s + Object.keys(by[k]).length - 1, 0); };
   if (!$('club').checked) { countMerged(); return; }
-  const ok = r => typeof r.lat === 'number' && typeof r.lng === 'number' && isFinite(r.lat) && isFinite(r.lng) && (r.lat || r.lng);
+  // ERV (112 vehicles) move around: never join them with a naka by GPS, only by their own name/number
+  const ok = r => typeof r.lat === 'number' && typeof r.lng === 'number' && isFinite(r.lat) && isFinite(r.lng) && (r.lat || r.lng) && !/^\s*ERV\b/i.test(r.point || r.typed || '');
   const cl = [];
   rows.filter(ok).sort((a, b) => a.ms - b.ms).forEach(r => {
     let best = null, bd = Infinity;
